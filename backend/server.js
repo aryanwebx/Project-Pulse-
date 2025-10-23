@@ -18,6 +18,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/communities', require('./routes/communities'));
 
 // Basic health check route
 app.get('/api/health', (req, res) => {
@@ -54,6 +55,31 @@ app.get('/api/admin-test',
       success: true,
       message: 'You have accessed an admin protected route!',
       user: req.user
+    });
+  }
+);
+
+// Test multi-tenant route
+app.get('/api/tenant-test', 
+  require('./middleware/auth').auth,
+  require('./middleware/tenant').identifyTenant,
+  (req, res) => {
+    res.json({
+      success: true,
+      message: 'Multi-tenant route accessed successfully!',
+      data: {
+        user: {
+          id: req.user._id,
+          name: req.user.name,
+          email: req.user.email,
+          role: req.user.role
+        },
+        community: req.community ? {
+          id: req.community._id,
+          name: req.community.name,
+          subdomain: req.community.subdomain
+        } : null
+      }
     });
   }
 );
