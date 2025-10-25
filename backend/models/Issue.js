@@ -108,7 +108,9 @@ const issueSchema = new mongoose.Schema({
     type: Date
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
 // Indexes for better query performance
@@ -136,6 +138,13 @@ issueSchema.pre('save', function(next) {
   next();
 });
 
+// Virtual for comments
+issueSchema.virtual('comments', {
+  ref: 'Comment',
+  localField: '_id',
+  foreignField: 'issue'
+});
+
 // Virtual for comments count
 issueSchema.virtual('commentCount', {
   ref: 'Comment',
@@ -152,7 +161,8 @@ issueSchema.virtual('resolutionTime').get(function() {
   return null;
 });
 
-// Ensure virtual fields are serialized
+// Ensure virtual fields are included when converting to JSON
 issueSchema.set('toJSON', { virtuals: true });
+issueSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('Issue', issueSchema);

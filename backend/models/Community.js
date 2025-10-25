@@ -70,7 +70,7 @@ const communitySchema = new mongoose.Schema({
 });
 
 // Indexes
-communitySchema.index({ subdomain: 1 });
+// communitySchema.index({ subdomain: 1 });
 communitySchema.index({ isActive: 1 });
 communitySchema.index({ createdBy: 1 });
 

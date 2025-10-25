@@ -19,6 +19,7 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/communities', require('./routes/communities'));
+app.use('/api/issues', require('./routes/issues'));
 
 // Basic health check route
 app.get('/api/health', (req, res) => {
@@ -107,4 +108,6 @@ app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
   console.log(`🔐 Auth routes: http://localhost:${PORT}/api/auth`);
+  console.log(`🏢 Community routes: http://localhost:${PORT}/api/communities`);
+  console.log(`📋 Issue routes: http://localhost:${PORT}/api/issues`);
 });
