@@ -140,7 +140,7 @@ router.post('/', async (req, res) => {
       category,
       urgency = 'medium',
       location,
-      images = [],
+      images = [], // Now accepts array of image objects from Cloudinary
       tags = []
     } = req.body;
 
@@ -164,14 +164,17 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Create issue
+    // Create issue with images
     const issue = new Issue({
       title: title.trim(),
       description: description.trim(),
       category,
       urgency,
       location: location ? location.trim() : '',
-      images,
+      images: images.map(img => ({
+        url: img.url,
+        publicId: img.publicId
+      })),
       tags: tags.map(tag => tag.trim()),
       createdBy: req.user._id,
       community: req.communityId
@@ -180,7 +183,7 @@ router.post('/', async (req, res) => {
     await issue.save();
     await issue.populate('createdBy', 'name email apartmentNumber avatar');
 
-    console.log(`📋 New issue created: "${issue.title}" by ${req.user.name} in ${req.community.name}`);
+    console.log(`📋 New issue created with ${issue.images.length} images: "${issue.title}" by ${req.user.name} in ${req.community.name}`);
 
     res.status(201).json({
       success: true,

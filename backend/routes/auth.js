@@ -361,8 +361,12 @@ router.put('/change-password', auth, async (req, res) => {
 // @access  Private
 router.post('/logout', auth, async (req, res) => {
   try {
-    // In a stateless JWT system, logout is handled client-side by removing the token
-    // We could implement a token blacklist here if needed
+
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (token) {
+      addToBlacklist(token);
+    }
     res.json({
       success: true,
       message: 'Logout successful'
