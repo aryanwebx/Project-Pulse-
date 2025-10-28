@@ -20,38 +20,33 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
     
+    // This effect still handles the initial load from localStorage
+    // and token changes from checkAuth
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-      console.log('Axios headers set with token')
     } else {
       delete axios.defaults.headers.common['Authorization']
-      console.log('Axios headers cleared')
     }
   }, [token])
 
   const login = async (email, password) => {
     try {
       setLoading(true)
-      console.log('Login attempt with:', { email })
-      
       const response = await axios.post('/api/auth/login', { email, password })
-      console.log('Raw login response:', response.data)
-      
-      // FIX: Extract data from the nested structure
       const { data } = response.data
       const { token, user } = data
-      
-      console.log('Extracted login data:', { token, user })
       
       if (!token || !user) {
         throw new Error('Invalid response structure: missing token or user')
       }
       
+      // --- FIX: Set header *before* setting state ---
       localStorage.setItem('token', token)
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      // ---------------------------------------------
+      
       setToken(token)
       setUser(user)
-      
-      console.log('Auth state updated:', { user, token })
       
       return { success: true, user }
     } catch (error) {
@@ -61,6 +56,13 @@ export const AuthProvider = ({ children }) => {
         status: error.response?.status
       })
       
+      // --- FIX: Clear token/header on failed login ---
+      localStorage.removeItem('token')
+      delete axios.defaults.headers.common['Authorization']
+      setToken(null)
+      setUser(null)
+      // -----------------------------------------------
+
       const errorMessage = error.response?.data?.message || 
                         error.response?.data?.error || 
                         'Login failed. Please try again.'
@@ -78,21 +80,28 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true)
       const response = await axios.post('/api/auth/register', userData)
-      console.log('Raw register response:', response.data)
-      
-      // FIX: Extract data from the nested structure
       const { data } = response.data
       const { token, user } = data
       
-      console.log('Extracted register data:', { token, user })
-      
+      // --- FIX: Set header *before* setting state ---
       localStorage.setItem('token', token)
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      // ---------------------------------------------
+      
       setToken(token)
       setUser(user)
       
       return { success: true, user }
     } catch (error) {
       console.error('Register error:', error)
+      
+      // --- FIX: Clear token/header on failed register ---
+      localStorage.removeItem('token')
+      delete axios.defaults.headers.common['Authorization']
+      setToken(null)
+      setUser(null)
+      // ------------------------------------------------
+      
       const errorMessage = error.response?.data?.message || 'Registration failed. Please try again.'
       return { 
         success: false, 
@@ -104,8 +113,10 @@ export const AuthProvider = ({ children }) => {
   }
 
   const logout = () => {
-    console.log('Logging out user')
+    // --- FIX: Explicitly delete header on logout ---
     localStorage.removeItem('token')
+    delete axios.defaults.headers.common['Authorization']
+    // --------------------------------------------
     setToken(null)
     setUser(null)
   }
@@ -114,22 +125,19 @@ export const AuthProvider = ({ children }) => {
     if (token) {
       try {
         console.log('Checking auth with token...')
+        // This relies on the useEffect[token] having run, which is fine on page load
         const response = await axios.get('/api/auth/me')
-        console.log('Auth check response:', response.data)
-        
-        // FIX: Extract user from nested structure
         const userData = response.data.data?.user || response.data.user
-        console.log('Extracted user data:', userData)
         
         if (userData) {
           setUser(userData)
-          console.log('User set from auth check')
         } else {
           throw new Error('No user data in response')
         }
       } catch (error) {
         console.error('Auth check failed:', error)
         localStorage.removeItem('token')
+        delete axios.defaults.headers.common['Authorization'] // Also clear here
         setToken(null)
         setUser(null)
       }
@@ -139,7 +147,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkAuth()
-  }, [])
+  }, []) // This empty dependency array is correct
 
   const value = {
     user,
@@ -150,8 +158,6 @@ export const AuthProvider = ({ children }) => {
     loading,
     isAuthenticated: !!user
   }
-
-  console.log('AuthContext value:', value)
 
   return (
     <AuthContext.Provider value={value}>

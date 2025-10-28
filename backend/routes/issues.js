@@ -4,10 +4,34 @@ const Comment = require('../models/Comment');
 const { auth, requireCommunityAdmin } = require('../middleware/auth');
 const { identifyTenant } = require('../middleware/tenant');
 
+// *** FIX: Import multer and Cloudinary uploader ***
+const multer = require('multer');
+const { uploadMultipleImages } = require('../config/cloudinary');
+// *************************************************
+
 const router = express.Router();
 
 // All routes require auth and tenant context
 router.use(auth, identifyTenant);
+
+// *** FIX: Configure Multer for memory storage ***
+// (Copied from your routes/upload.js)
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Check if file is an image
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed!'), false);
+    }
+  },
+});
+// *************************************************
 
 // @desc    Get all issues for current community
 // @route   GET /api/issues
@@ -57,16 +81,25 @@ router.get('/', async (req, res) => {
     }
 
     // Execute query with pagination
-    const issues = await Issue.find(filter)
+    const issuesDocs = await Issue.find(filter)
       .populate('createdBy', 'name email apartmentNumber avatar')
       .populate('assignedTo', 'name email')
-      .populate('upvotes', 'name')
       .sort(sortOptions)
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
     // Get total count for pagination
     const total = await Issue.countDocuments(filter);
+
+    // Add `hasCurrentUserUpvoted` property to each issue
+    const userId = req.user._id;
+    const issues = issuesDocs.map(doc => {
+      const issue = doc.toObject();
+      issue.hasCurrentUserUpvoted = issue.upvotes.some(upvoteId => 
+        upvoteId.equals(userId)
+      );
+      return issue;
+    });
 
     res.json({
       success: true,
@@ -115,9 +148,16 @@ router.get('/:id', async (req, res) => {
       });
     }
 
+    // Add `hasCurrentUserUpvoted` to the single issue object
+    const issueObject = issue.toObject();
+    const userId = req.user._id;
+    issueObject.hasCurrentUserUpvoted = issue.upvotes.some(user => 
+      user._id.equals(userId)
+    );
+
     res.json({
       success: true,
-      data: { issue }
+      data: { issue: issueObject }
     });
 
   } catch (error) {
@@ -132,18 +172,22 @@ router.get('/:id', async (req, res) => {
 // @desc    Create a new issue
 // @route   POST /api/issues
 // @access  Private
-router.post('/', async (req, res) => {
+//
+// *** FIX: Add multer middleware to handle 'images' field ***
+router.post('/', upload.array('images', 5), async (req, res) => {
   try {
+    // *** FIX: Text fields are now in req.body, files are in req.files ***
     const {
       title,
       description,
       category,
       urgency = 'medium',
       location,
-      images = [], // Now accepts array of image objects from Cloudinary
       tags = []
-    } = req.body;
+    } = req.body; // req.body is now defined thanks to multer
 
+    let uploadedImages = []; // To store Cloudinary results
+    
     // Validation
     if (!title || !description || !category) {
       return res.status(400).json({
@@ -164,18 +208,35 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Create issue with images
+    // *** FIX: Upload files to Cloudinary if they exist ***
+    if (req.files && req.files.length > 0) {
+      const folder = `project-pulse/${req.community.subdomain}/issues`;
+      const result = await uploadMultipleImages(req.files, folder);
+
+      if (!result.success) {
+        return res.status(500).json({
+          success: false,
+          error: result.error || 'Failed to upload images'
+        });
+      }
+      
+      // Map Cloudinary results to the format expected by the Issue model
+      uploadedImages = result.images.map(img => ({
+        url: img.url,
+        publicId: img.publicId
+      }));
+    }
+    // *************************************************
+
+    // Create issue with the uploaded image URLs
     const issue = new Issue({
       title: title.trim(),
       description: description.trim(),
       category,
       urgency,
       location: location ? location.trim() : '',
-      images: images.map(img => ({
-        url: img.url,
-        publicId: img.publicId
-      })),
-      tags: tags.map(tag => tag.trim()),
+      images: uploadedImages, // Use the array of uploaded images
+      tags: Array.isArray(tags) ? tags.map(tag => tag.trim()) : (tags ? [tags.trim()] : []), // Handle tags
       createdBy: req.user._id,
       community: req.communityId
     });
@@ -183,12 +244,16 @@ router.post('/', async (req, res) => {
     await issue.save();
     await issue.populate('createdBy', 'name email apartmentNumber avatar');
 
-    console.log(`📋 New issue created with ${issue.images.length} images: "${issue.title}" by ${req.user.name} in ${req.community.name}`);
+    console.log(`搭 New issue created with ${issue.images.length} images: "${issue.title}" by ${req.user.name} in ${req.community.name}`);
+
+    // Add `hasCurrentUserUpvoted` (will be false)
+    const issueObject = issue.toObject();
+    issueObject.hasCurrentUserUpvoted = false; 
 
     res.status(201).json({
       success: true,
       message: 'Issue created successfully',
-      data: { issue }
+      data: { issue: issueObject }
     });
 
   } catch (error) {
@@ -280,12 +345,19 @@ router.put('/:id/status', requireCommunityAdmin, async (req, res) => {
       await comment.save();
     }
 
-    console.log(`🔄 Issue status updated: "${issue.title}" -> ${status} by ${req.user.name}`);
+    console.log(`売 Issue status updated: "${issue.title}" -> ${status} by ${req.user.name}`);
+
+    // Add `hasCurrentUserUpvoted` to the response
+    const issueObject = issue.toObject();
+    const userId = req.user._id;
+    issueObject.hasCurrentUserUpvoted = issue.upvotes.some(upvoteId => 
+      upvoteId.equals(userId)
+    );
 
     res.json({
       success: true,
       message: 'Issue status updated successfully',
-      data: { issue }
+      data: { issue: issueObject }
     });
 
   } catch (error) {
@@ -308,32 +380,38 @@ router.post('/:id/upvote', async (req, res) => {
     });
 
     if (!issue) {
-      return res.status(404).json({
+      return res.status(44).json({
         success: false,
         error: 'Issue not found'
       });
     }
 
+    // `hasUpvoted` is the state *before* the click
     const hasUpvoted = issue.upvotes.includes(req.user._id);
 
     if (hasUpvoted) {
       // Remove upvote
       issue.upvotes.pull(req.user._id);
-      console.log(`👎 Upvote removed from "${issue.title}" by ${req.user.name}`);
+      console.log(`綜 Upvote removed from "${issue.title}" by ${req.user.name}`);
     } else {
       // Add upvote
       issue.upvotes.push(req.user._id);
-      console.log(`👍 Upvote added to "${issue.title}" by ${req.user.name}`);
+      console.log(`総 Upvote added to "${issue.title}" by ${req.user.name}`);
     }
 
     await issue.save();
     await issue.populate('createdBy', 'name email apartmentNumber avatar');
     await issue.populate('upvotes', 'name');
 
+    // Convert to object and add the new `hasCurrentUserUpvoted` status
+    const issueObject = issue.toObject();
+    // The new status is the opposite of the old `hasUpvoted` status
+    issueObject.hasCurrentUserUpvoted = !hasUpvoted;
+
     res.json({
       success: true,
       message: hasUpvoted ? 'Upvote removed' : 'Issue upvoted',
-      data: { issue }
+      data: { issue: issueObject }
     });
 
   } catch (error) {
@@ -387,7 +465,7 @@ router.post('/:id/comments', async (req, res) => {
     await comment.save();
     await comment.populate('author', 'name email avatar role');
 
-    console.log(`💬 Comment added to issue "${issue.title}" by ${req.user.name}`);
+    console.log(`町 Comment added to issue "${issue.title}" by ${req.user.name}`);
 
     res.status(201).json({
       success: true,

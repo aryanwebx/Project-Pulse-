@@ -224,7 +224,7 @@ const Login = () => {
       </div>
 
       {/* Custom Animation */}
-      <style jsx>{`
+      <style>{`
         @keyframes pulse {
           0%, 100% { opacity: 0.2; }
           50% { opacity: 0.3; }

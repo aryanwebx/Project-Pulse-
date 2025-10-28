@@ -8,6 +8,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Issues from './pages/Issues'
+import CreateIssue from './pages/CreateIssue'
 import IssueDetail from './pages/IssueDetail'
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
               <Route index element={<Dashboard />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="issues" element={<Issues />} />
+               <Route path="issues/new" element={<CreateIssue />} />
               <Route path="issues/:id" element={<IssueDetail />} />
             </Route>
 

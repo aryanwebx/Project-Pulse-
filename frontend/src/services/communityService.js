@@ -5,32 +5,33 @@ export const communityService = {
   async getCommunities() {
     try {
       const response = await axios.get('/api/communities')
-      return response.data
+      return response.data.data || response.data
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to fetch communities')
     }
   },
 
-  // Get communities where user is a member (for switching)
-  async getUserCommunities() {
+  // Get communities where user is a member
+  async getUserCommunity() {
     try {
-      const response = await axios.get('/api/communities/user')
-      return response.data
+      const response = await axios.get('/api/communities/current')
+      
+      return response.data.data
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to fetch user communities')
     }
   },
 
-  // Create new community (super admin only)
-  async createCommunity(communityData) {
+
+  // Get community stats
+  async getCommunityStats(communityId) {
     try {
-      const response = await axios.post('/api/communities', communityData)
-      return response.data
+      const response = await axios.get(`/api/communities/${communityId}/stats`)
+      return response.data.data || response.data
     } catch (error) {
-      throw new Error(error.response?.data?.message || 'Failed to create community')
+      throw new Error(error.response?.data?.message || 'Failed to fetch community stats')
     }
   }
-
 }
 
  await communityService.getCommunities();

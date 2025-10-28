@@ -29,7 +29,8 @@ const Register = () => {
     const loadCommunities = async () => {
       try {
         const communitiesData = await communityService.getCommunities();
-        setCommunities(communitiesData.data.communities);
+        console.log(communitiesData.communities)
+        setCommunities(communitiesData.communities);
       } catch (error) {
         setErrors({ communities: error.message });
       } finally {
@@ -211,7 +212,7 @@ const Register = () => {
                 <option value="">
                   {loadingCommunities ? "Loading communities..." : "Select a community"}
                 </option>
-                {communities.map((community) => (
+                {communities?.map((community) => (
                   <option key={community._id} value={community.subdomain}>
                     {community.name}
                   </option>
