@@ -99,7 +99,7 @@ router.post('/', auth, requireSuperAdmin, async (req, res) => {
 // @desc    Get all communities (Super Admin only)
 // @route   GET /api/communities
 // @access  Private (Super Admin)
-router.get('/', auth, requireSuperAdmin, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { page = 1, limit = 10, search = '' } = req.query;
 
