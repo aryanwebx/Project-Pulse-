@@ -21,16 +21,8 @@ export const issueService = {
     }
   },
 
-  // Get a single issue by ID
-  async getIssueById(issueId) {
-    try {
-      const response = await axios.get(`/api/issues/${issueId}`)
-      return response.data.data || response.data
-    } catch (error) {
-      console.error('Failed to fetch issue:', error)
-      throw error
-    }
-  },
+  // *** BUG 1: This function was a duplicate and has been removed. ***
+  // The correct function is below.
 
   // Create a new issue
   async createIssue(issueData) {
@@ -57,12 +49,12 @@ export const issueService = {
             'Content-Type': 'multipart/form-data'
           }
         })
-        return response.data.data || response.data
+        return response.data.data.issue || response.data.data // Return unwrapped issue
       } else {
         // No images, send as JSON
         console.log('Creating issue without images...')
         const response = await axios.post('/api/issues', issueData)
-        return response.data.data || response.data
+        return response.data.data.issue || response.data.data // Return unwrapped issue
       }
     } catch (error) {
       console.error('Failed to create issue:', error.response?.data || error.message)
@@ -74,7 +66,7 @@ export const issueService = {
   async updateIssue(issueId, updateData) {
     try {
       const response = await axios.patch(`/api/issues/${issueId}`, updateData)
-      return response.data.data || response.data
+      return response.data.data.issue || response.data.data // Return unwrapped issue
     } catch (error) {
       console.error('Failed to update issue:', error)
       throw error
@@ -85,6 +77,7 @@ export const issueService = {
   async upvoteIssue(issueId) {
     try {
       const response = await axios.post(`/api/issues/${issueId}/upvote`)
+      // This one already returns { issue: {...} }
       return response.data.data || response.data
     } catch (error) {
       console.error('Failed to upvote issue:', error)
@@ -97,7 +90,10 @@ export const issueService = {
     try {
       const response = await axios.get(`/api/issues/${issueId}`)
       console.log('Issue detail response:', response.data)
-      return response.data.data || response.data
+      
+      // *** FIX: Return the issue object directly, not the 'data' wrapper ***
+      return response.data.data.issue || response.data.issue
+      
     } catch (error) {
       console.error('Failed to fetch issue:', error.response?.data || error.message)
       // Return mock data for development
@@ -109,7 +105,7 @@ export const issueService = {
   async addComment(issueId, commentData) {
     try {
       const response = await axios.post(`/api/issues/${issueId}/comments`, commentData)
-      return response.data.data || response.data
+      return response.data.data.comment || response.data.data // Return unwrapped comment
     } catch (error) {
       console.error('Failed to add comment:', error)
       throw error
@@ -123,11 +119,10 @@ export const issueService = {
         status,
         adminNotes
       })
-      return response.data.data || response.data
+      return response.data.data.issue || response.data.data // Return unwrapped issue
     } catch (error) {
       console.error('Failed to update status:', error)
       throw error
     }
   },
-
 }

@@ -428,7 +428,7 @@ router.post('/:id/upvote', async (req, res) => {
 // @access  Private
 router.post('/:id/comments', async (req, res) => {
   try {
-    const { content, isInternal = false } = req.body;
+    const { content, isInternal = false, parentComment = null } = req.body;
 
     if (!content || content.trim().length === 0) {
       return res.status(400).json({
@@ -459,13 +459,14 @@ router.post('/:id/comments', async (req, res) => {
       issue: issue._id,
       author: req.user._id,
       community: req.communityId,
-      isInternal: isInternal && canPostInternal
+      isInternal: isInternal && canPostInternal,
+      parentComment: parentComment
     });
 
     await comment.save();
     await comment.populate('author', 'name email avatar role');
 
-    console.log(`町 Comment added to issue "${issue.title}" by ${req.user.name}`);
+    console.log(`Comment added to issue "${issue.title}" by ${req.user.name}`);
 
     res.status(201).json({
       success: true,

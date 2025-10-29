@@ -9,7 +9,7 @@ const Sidebar = () => {
     { path: '/app/issues', label: 'All Issues', icon: '🐛' },
   ]
 
-  if (user?.role === 'admin' || user?.role === 'super_admin') {
+  if (user?.role === 'community_admin' || user?.role === 'super_admin') {
     navItems.push({ path: '/app/admin', label: 'Admin', icon: '⚙️' })
   }
 
