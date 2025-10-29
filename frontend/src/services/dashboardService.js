@@ -4,23 +4,31 @@ export const dashboardService = {
   // Get dashboard stats for current community
   async getDashboardStats(communityId) {
     try {
-      const response = await axios.get(`/api/dashboard/stats?communityId=${communityId}`)
-      return response.data.data || response.data
+      // The tenant middleware (identifyTenant) automatically
+      // scopes this request to the user's community.
+      const response = await axios.get('/api/issues/stats/overview')
+      return response.data.data // Returns { overview: {...}, categories: [...], sentiments: [...] }
     } catch (error) {
-      console.error('Failed to fetch dashboard stats:', error)
-      // Return mock data for development
-      return this.getMockStats()
+      console.error('Failed to fetch dashboard stats:', error.response?.data || error.message)
+      // Return a default empty state on error
+      return { overview: {}, categories: [], sentiments: [] }
     }
   },
 
   // Get recent issues
   async getRecentIssues(communityId, limit = 5) {
-    try {
-      const response = await axios.get(`/api/issues?communityId=${communityId}&limit=${limit}&sort=-createdAt`)
-      return response.data.data || response.data
+   try {
+      // Tenant middleware scopes this request automatically
+      const params = new URLSearchParams({
+        limit: limit.toString(),
+        sortBy: 'createdAt',
+        sortOrder: 'desc'
+      });
+      const response = await axios.get(`/api/issues?${params.toString()}`)
+      return response.data.data // Returns { issues: [...], total: ... }
     } catch (error) {
-      console.error('Failed to fetch recent issues:', error)
-      return this.getMockRecentIssues()
+      console.error('Failed to fetch recent issues:', error.response?.data || error.message)
+      return { issues: [], total: 0 } // Return default empty state
     }
   },
 

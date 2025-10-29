@@ -87,5 +87,38 @@ export const communityService = {
       console.error("Error in updateUserStatus:", error.response?.data || error.message);
       throw new Error(error.response?.data?.error || error.response?.data?.message || 'Failed to update user status')
     }
+  },
+
+  // --- NEW Super Admin Functions (but related to communities) ---
+
+  /**
+   * Gets ALL communities (for super admin)
+   * Hits GET /api/communities (which requires super_admin)
+   */
+  async getAllCommunities() {
+    try {
+      const response = await axios.get('/api/communities'); 
+      return response.data.data; // { communities: [], ... }
+    } catch (error) {
+      console.error("Error fetching all communities:", error.response?.data || error.message);
+      throw new Error(error.response?.data?.message || 'Failed to fetch all communities');
+    }
+  },
+
+  /**
+   * Creates a new community (for super admin)
+   * Hits POST /api/communities
+   */
+  async createCommunity(communityData) {
+    try {
+      // communityData should be { name, subdomain, contactEmail }
+      const response = await axios.post('/api/communities', communityData);
+      return response.data.data.community; // Returns the new community
+    } catch (error) {
+      console.error("Error creating community:", error.response?.data || error.message);
+      throw new Error(error.response?.data?.error || error.response?.data?.message || 'Failed to create community');
+    }
   }
+
+  
 }

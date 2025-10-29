@@ -9,9 +9,21 @@ const Sidebar = () => {
     { path: '/app/issues', label: 'All Issues', icon: '🐛' },
   ]
 
-  if (user?.role === 'community_admin' || user?.role === 'super_admin') {
+  // Add Admin link for Community Admins
+  if (user?.role === 'community_admin') {
     navItems.push({ path: '/app/admin', label: 'Admin', icon: '⚙️' })
   }
+  
+  // *** NEW: Add Super Admin link for Super Admins ***
+  if (user?.role === 'super_admin') {
+    // A super admin might also be a community admin, add both links
+    // or just the super admin link which is more powerful.
+    // Let's add an "Admin" link (for their own community)
+    navItems.push({ path: '/app/admin', label: 'Community Admin', icon: '⚙️' })
+    // And a "Super Admin" link (for platform management)
+    navItems.push({ path: '/app/superadmin', label: 'Super Admin', icon: '👑' })
+  }
+
 
   return (
     <aside className="w-64 bg-white shadow-sm border-r border-gray-200 min-h-screen shrink-0">

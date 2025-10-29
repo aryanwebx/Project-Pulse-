@@ -4,6 +4,7 @@ import { CommunityProvider } from './contexts/CommunityContext'
 import Layout from './components/Layout/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
+import SuperAdminRoute from './components/SuperAdminRoute'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -13,6 +14,8 @@ import CreateIssue from './pages/CreateIssue'
 import IssueDetail from './pages/IssueDetail'
 import AdminDashboard from './pages/AdminDashboard'
 import ManageUsers from './pages/ManageUsers'
+import SuperAdminDashboard from './pages/SuperAdminDashboard'
+import GlobalUserManagement from './pages/GlobalUserManagement'
 
 function App() {
   return (
@@ -45,6 +48,12 @@ function App() {
                 {/* Add more admin routes here later (e.g., settings) */}
               </Route>
               {/* *** End Admin Routes *** */}
+
+              <Route path="superadmin" element={<SuperAdminRoute />}>
+                <Route index element={<SuperAdminDashboard />} />
+                <Route path="users" element={<GlobalUserManagement />} />
+              </Route>
+              
             </Route>
 
             {/* Redirect any unknown routes to home */}
