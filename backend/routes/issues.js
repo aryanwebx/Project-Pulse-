@@ -8,7 +8,7 @@ const { identifyTenant } = require('../middleware/tenant');
 const multer = require('multer');
 const { uploadMultipleImages } = require('../config/cloudinary');
 // *************************************************
-
+const { analyzeIssue } = require('../services/aiService');
 const router = express.Router();
 
 // All routes require auth and tenant context
@@ -227,7 +227,7 @@ router.post('/', upload.array('images', 5), async (req, res) => {
       }));
     }
     // *************************************************
-
+const aiData = await analyzeIssue(title, description, allowedCategories);
     // Create issue with the uploaded image URLs
     const issue = new Issue({
       title: title.trim(),
@@ -238,14 +238,22 @@ router.post('/', upload.array('images', 5), async (req, res) => {
       images: uploadedImages, // Use the array of uploaded images
       tags: Array.isArray(tags) ? tags.map(tag => tag.trim()) : (tags ? [tags.trim()] : []), // Handle tags
       createdBy: req.user._id,
-      community: req.communityId
+      community: req.communityId,
+      aiAnalysis: aiData ? {
+        predictedCategory: aiData.predictedCategory,
+        confidence: aiData.predictedCategory === category ? 0.9 : 0.6, // Simple confidence logic
+        sentiment: aiData.sentiment,
+        summary: aiData.summary,
+        suggestedTags: aiData.suggestedTags,
+        analyzedAt: new Date()
+      } : null
     });
 
     await issue.save();
     await issue.populate('createdBy', 'name email apartmentNumber avatar');
 
-    console.log(`搭 New issue created with ${issue.images.length} images: "${issue.title}" by ${req.user.name} in ${req.community.name}`);
-
+    console.log(`New issue created with ${issue.images.length} images: "${issue.title}" by ${req.user.name} in ${req.community.name}`);
+console.log(`New issue created (with AI): "${issue.title}" by ${req.user.name}`);
     // Add `hasCurrentUserUpvoted` (will be false)
     const issueObject = issue.toObject();
     issueObject.hasCurrentUserUpvoted = false; 
