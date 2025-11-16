@@ -16,6 +16,8 @@ import AdminDashboard from './pages/AdminDashboard'
 import ManageUsers from './pages/ManageUsers'
 import SuperAdminDashboard from './pages/SuperAdminDashboard'
 import GlobalUserManagement from './pages/GlobalUserManagement'
+import Profile from './pages/Profile'
+import CommunitySettings from './pages/CommunitySettings'
 
 function App() {
   return (
@@ -39,12 +41,14 @@ function App() {
               <Route path="issues" element={<Issues />} />
                <Route path="issues/new" element={<CreateIssue />} />
               <Route path="issues/:id" element={<IssueDetail />} />
+              <Route path="profile" element={<Profile/>}/>
               {/* *** 3. ADD Admin Routes *** */}
               {/* This parent route uses AdminRoute AND renders an Outlet */}
               <Route path="admin" element={<AdminRoute />}>
                 {/* Child routes rendered by the Outlet */}
                 <Route index element={<AdminDashboard />} />
                 <Route path="users" element={<ManageUsers />} />
+                <Route path="settings" element={<CommunitySettings/>}/>
                 {/* Add more admin routes here later (e.g., settings) */}
               </Route>
               {/* *** End Admin Routes *** */}

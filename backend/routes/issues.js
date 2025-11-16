@@ -3,19 +3,21 @@ const Issue = require("../models/Issue");
 const Comment = require("../models/Comment");
 const { auth, requireCommunityAdmin } = require("../middleware/auth");
 const { identifyTenant } = require("../middleware/tenant");
-
-// *** FIX: Import multer and Cloudinary uploader ***
 const multer = require("multer");
 const { uploadMultipleImages } = require("../config/cloudinary");
-// *************************************************
-const { analyzeIssue } = require("../services/aiService");
+
+// --- Import all required services ---
+const { analyzeIssue, generateAiReply } = require("../services/aiService");
+const { createNotification } = require('../services/notificationService');
+const { getIO } = require('../socket'); // Use getIO, not app.get('io')
+// ------------------------------------
+
 const router = express.Router();
 
 // All routes require auth and tenant context
 router.use(auth, identifyTenant);
 
-// *** FIX: Configure Multer for memory storage ***
-// (Copied from your routes/upload.js)
+// Configure Multer for memory storage
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -23,7 +25,6 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
   fileFilter: (req, file, cb) => {
-    // Check if file is an image
     if (file.mimetype.startsWith("image/")) {
       cb(null, true);
     } else {
@@ -31,7 +32,6 @@ const upload = multer({
     }
   },
 });
-// *************************************************
 
 // @desc    Get all issues for current community
 // @route   GET /api/issues
@@ -49,21 +49,12 @@ router.get("/", async (req, res) => {
       search = "",
     } = req.query;
 
-    // Build filter object
     const filter = { community: req.communityId };
 
-    // Add optional filters
-    if (status && status !== "all") {
-      filter.status = status;
-    }
-    if (category && category !== "all") {
-      filter.category = category;
-    }
-    if (urgency && urgency !== "all") {
-      filter.urgency = urgency;
-    }
+    if (status && status !== "all") filter.status = status;
+    if (category && category !== "all") filter.category = category;
+    if (urgency && urgency !== "all") filter.urgency = urgency;
 
-    // Search in title and description
     if (search) {
       filter.$or = [
         { title: { $regex: search, $options: "i" } },
@@ -72,7 +63,6 @@ router.get("/", async (req, res) => {
       ];
     }
 
-    // Sort options
     const sortOptions = {};
     if (sortBy === "upvotes") {
       sortOptions.upvoteCount = sortOrder === "desc" ? -1 : 1;
@@ -80,7 +70,6 @@ router.get("/", async (req, res) => {
       sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
     }
 
-    // Execute query with pagination
     const issuesDocs = await Issue.find(filter)
       .populate("createdBy", "name email apartmentNumber avatar")
       .populate("assignedTo", "name email")
@@ -88,10 +77,8 @@ router.get("/", async (req, res) => {
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
-    // Get total count for pagination
     const total = await Issue.countDocuments(filter);
 
-    // Add `hasCurrentUserUpvoted` property to each issue
     const userId = req.user._id;
     const issues = issuesDocs.map((doc) => {
       const issue = doc.toObject();
@@ -147,7 +134,6 @@ router.get("/:id", async (req, res) => {
       });
     }
 
-    // Add `hasCurrentUserUpvoted` to the single issue object
     const issueObject = issue.toObject();
     const userId = req.user._id;
     issueObject.hasCurrentUserUpvoted = issue.upvotes.some((user) =>
@@ -170,11 +156,8 @@ router.get("/:id", async (req, res) => {
 // @desc    Create a new issue
 // @route   POST /api/issues
 // @access  Private
-//
-// *** FIX: Add multer middleware to handle 'images' field ***
 router.post("/", upload.array("images", 5), async (req, res) => {
   try {
-    // *** FIX: Text fields are now in req.body, files are in req.files ***
     const {
       title,
       description,
@@ -182,11 +165,10 @@ router.post("/", upload.array("images", 5), async (req, res) => {
       urgency = "medium",
       location,
       tags = [],
-    } = req.body; // req.body is now defined thanks to multer
+    } = req.body;
 
-    let uploadedImages = []; // To store Cloudinary results
+    let uploadedImages = [];
 
-    // Validation
     if (!title || !description || !category) {
       return res.status(400).json({
         success: false,
@@ -194,7 +176,6 @@ router.post("/", upload.array("images", 5), async (req, res) => {
       });
     }
 
-    // Validate category against community's allowed categories
     const allowedCategories = req.community.settings.categories || [
       "Plumbing",
       "Electrical",
@@ -213,7 +194,6 @@ router.post("/", upload.array("images", 5), async (req, res) => {
       });
     }
 
-    // *** FIX: Upload files to Cloudinary if they exist ***
     if (req.files && req.files.length > 0) {
       const folder = `project-pulse/${req.community.subdomain}/issues`;
       const result = await uploadMultipleImages(req.files, folder);
@@ -224,34 +204,48 @@ router.post("/", upload.array("images", 5), async (req, res) => {
           error: result.error || "Failed to upload images",
         });
       }
-
-      // Map Cloudinary results to the format expected by the Issue model
       uploadedImages = result.images.map((img) => ({
         url: img.url,
         publicId: img.publicId,
       }));
     }
-    // *************************************************
-    const aiData = await analyzeIssue(title, description, allowedCategories);
-    // Create issue with the uploaded image URLs
+
+    // *** FIX: Wrap AI call in its own try/catch block ***
+    let aiData = null;
+    try {
+      if (req.community.settings.aiFeatures) {
+        console.log("AI analysis enabled, attempting to analyze issue...");
+        aiData = await analyzeIssue(title, description, allowedCategories);
+      } else {
+        console.log("AI analysis disabled for this community.");
+      }
+    } catch (aiError) {
+      console.error(
+        "AI analysis failed, but proceeding with issue creation:",
+        aiError.message
+      );
+      // We explicitly set aiData to null and continue
+    }
+    // *** END FIX ***
+
     const issue = new Issue({
       title: title.trim(),
       description: description.trim(),
       category,
       urgency,
       location: location ? location.trim() : "",
-      images: uploadedImages, // Use the array of uploaded images
+      images: uploadedImages,
       tags: Array.isArray(tags)
         ? tags.map((tag) => tag.trim())
         : tags
         ? [tags.trim()]
-        : [], // Handle tags
+        : [],
       createdBy: req.user._id,
       community: req.communityId,
       aiAnalysis: aiData
         ? {
             predictedCategory: aiData.predictedCategory,
-            confidence: aiData.predictedCategory === category ? 0.9 : 0.6, // Simple confidence logic
+            confidence: aiData.predictedCategory === category ? 0.9 : 0.6,
             sentiment: aiData.sentiment,
             summary: aiData.summary,
             suggestedTags: aiData.suggestedTags,
@@ -264,14 +258,16 @@ router.post("/", upload.array("images", 5), async (req, res) => {
     await issue.populate("createdBy", "name email apartmentNumber avatar");
 
     console.log(
-      `New issue created with ${issue.images.length} images: "${issue.title}" by ${req.user.name} in ${req.community.name}`
+      `New issue created (AI: ${aiData ? 'success' : 'skipped/failed'}) with ${issue.images.length} images: "${issue.title}" by ${req.user.name} in ${req.community.name}`
     );
-    console.log(
-      `New issue created (with AI): "${issue.title}" by ${req.user.name}`
-    );
-    // Add `hasCurrentUserUpvoted` (will be false)
+
     const issueObject = issue.toObject();
     issueObject.hasCurrentUserUpvoted = false;
+
+    // *** ADDED: Emit socket event for new issue ***
+    const io = getIO();
+    io.to(req.communityId.toString()).emit("issue:new", issueObject);
+    console.log(`Socket: Emitted 'issue:new' to room ${req.communityId}`);
 
     res.status(201).json({
       success: true,
@@ -280,7 +276,6 @@ router.post("/", upload.array("images", 5), async (req, res) => {
     });
   } catch (error) {
     console.error("Create issue error:", error);
-
     if (error.name === "ValidationError") {
       const errors = Object.values(error.errors).map((err) => err.message);
       return res.status(400).json({
@@ -288,10 +283,48 @@ router.post("/", upload.array("images", 5), async (req, res) => {
         error: errors.join(", "),
       });
     }
-
     res.status(500).json({
       success: false,
       error: "Server error during issue creation",
+    });
+  }
+});
+
+// @desc    Generate AI-assisted reply for an issue (Admin only)
+// @route   POST /api/issues/:id/ai-reply
+// @access  Private (Community Admin or Super Admin)
+router.post("/:id/ai-reply", requireCommunityAdmin, async (req, res) => {
+  try {
+    const issue = await Issue.findOne({
+      _id: req.params.id,
+      community: req.communityId,
+    }).select("title description category status");
+
+    if (!issue) {
+      return res.status(404).json({
+        success: false,
+        error: "Issue not found",
+      });
+    }
+
+    const aiData = await generateAiReply(issue);
+
+    if (!aiData || !aiData.suggestedReply) {
+      throw new Error("AI failed to generate a valid reply.");
+    }
+
+    res.json({
+      success: true,
+      message: "AI reply generated successfully.",
+      data: {
+        suggestedReply: aiData.suggestedReply,
+      },
+    });
+  } catch (error) {
+    console.error("AI reply generation error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Server error generating AI reply",
     });
   }
 });
@@ -301,17 +334,11 @@ router.post("/", upload.array("images", 5), async (req, res) => {
 // @access  Private (Community Admin or Super Admin)
 router.put("/:id/status", requireCommunityAdmin, async (req, res) => {
   try {
-    const { status, assignedTo, adminNote } = req.body;
-    console.log(assignedTo);
+    const { status, assignedTo, adminNotes } = req.body;
 
     if (!status) {
-      return res.status(400).json({
-        success: false,
-        error: "Status is required",
-      });
+      return res.status(400).json({ success: false, error: "Status is required" });
     }
-
-    // Validate status
     const validStatuses = ["open", "acknowledged", "in_progress", "resolved"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
@@ -320,41 +347,27 @@ router.put("/:id/status", requireCommunityAdmin, async (req, res) => {
       });
     }
 
-    // Find issue in current community
     const issue = await Issue.findOne({
       _id: req.params.id,
       community: req.communityId,
     }).populate("createdBy", "name email");
 
     if (!issue) {
-      return res.status(404).json({
-        success: false,
-        error: "Issue not found",
-      });
+      return res.status(404).json({ success: false, error: "Issue not found" });
     }
 
-    // Store old status for comment
     const oldStatus = issue.status;
-
-    // Update issue
     issue.status = status;
-    if (assignedTo) {
-      issue.assignedTo = assignedTo;
-    }
-
-    // Set resolvedAt if status is resolved
+    if (assignedTo) issue.assignedTo = assignedTo;
     if (status === "resolved" && !issue.resolvedAt) {
       issue.resolvedAt = new Date();
     }
 
     await issue.save();
-    await issue.populate("createdBy", "name email apartmentNumber avatar");
-    await issue.populate("assignedTo", "name email");
 
-    // Create admin comment if note provided or status changed
-    if (adminNote || oldStatus !== status) {
+    if (adminNotes || oldStatus !== status) {
       const comment = new Comment({
-        content: adminNote || `Status updated from ${oldStatus} to ${status}`,
+        content: adminNotes || `Status changed from ${oldStatus} to ${status}.`,
         issue: issue._id,
         author: req.user._id,
         community: req.communityId,
@@ -368,17 +381,36 @@ router.put("/:id/status", requireCommunityAdmin, async (req, res) => {
     }
 
     console.log(
-      `売 Issue status updated: "${issue.title}" -> ${status} by ${req.user.name}`
+      `🔔 Issue status updated: "${issue.title}" -> ${status} by ${req.user.name}`
     );
 
-    // Add `hasCurrentUserUpvoted` to the response
+    // --- CREATE NOTIFICATION ---
+    if (issue.createdBy._id.toString() !== req.user._id.toString()) {
+      createNotification(
+        issue.createdBy._id,
+        issue.community,
+        'STATUS_UPDATE',
+        `Your issue "${issue.title}" was updated to "${status}".`,
+        `/app/issues/${issue._id}`,
+        req.user._id
+      );
+    }
+    // --- END NOTIFICATION ---
+
+    // Repopulate all fields for the response
+    await issue.populate([
+      { path: "createdBy", select: "name email apartmentNumber avatar" },
+      { path: "assignedTo", select: "name email" },
+      { path: "comments", populate: { path: "author", select: "name email avatar role" } }
+    ]);
+
     const issueObject = issue.toObject();
     const userId = req.user._id;
     issueObject.hasCurrentUserUpvoted = issue.upvotes.some((upvoteId) =>
       upvoteId.equals(userId)
     );
 
-    const io = req.app.get("io");
+    const io = getIO(); // Use getIO()
     io.to(issue._id.toString()).emit("issue:update", issueObject);
     console.log(`Socket: Emitted 'issue:update' to room ${issue._id}`);
 
@@ -407,40 +439,38 @@ router.post("/:id/upvote", async (req, res) => {
     });
 
     if (!issue) {
-      return res.status(44).json({
+      return res.status(404).json({
         success: false,
         error: "Issue not found",
       });
     }
 
-    // `hasUpvoted` is the state *before* the click
     const hasUpvoted = issue.upvotes.includes(req.user._id);
 
     if (hasUpvoted) {
-      // Remove upvote
       issue.upvotes.pull(req.user._id);
       console.log(
-        `綜 Upvote removed from "${issue.title}" by ${req.user.name}`
+        `Upvote removed from "${issue.title}" by ${req.user.name}`
       );
     } else {
-      // Add upvote
       issue.upvotes.push(req.user._id);
-      console.log(`総 Upvote added to "${issue.title}" by ${req.user.name}`);
+      console.log(`Upvote added to "${issue.title}" by ${req.user.name}`);
     }
 
     await issue.save();
-    await issue.populate("createdBy", "name email apartmentNumber avatar");
-    await issue.populate("upvotes", "name");
+    
+    // Repopulate all fields for the response
+    await issue.populate([
+      { path: "createdBy", select: "name email apartmentNumber avatar" },
+      { path: "assignedTo", select: "name email" },
+      { path: "upvotes", select: "name" },
+      { path: "comments", populate: { path: "author", select: "name email avatar role" } }
+    ]);
 
-    // Convert to object and add the new `hasCurrentUserUpvoted` status
     const issueObject = issue.toObject();
-    // The new status is the opposite of the old `hasUpvoted` status
     issueObject.hasCurrentUserUpvoted = !hasUpvoted;
-    issueObject.createdBy = issue.createdBy; // Ensure populated fields are in object
-    issueObject.assignedTo = issue.assignedTo;
-    issueObject.comments = issue.comments;
 
-    const io = req.app.get("io");
+    const io = getIO(); // Use getIO()
     io.to(issue._id.toString()).emit("issue:update", issueObject);
     console.log(
       `Socket: Emitted 'issue:update' (from upvote) to room ${issue._id}`
@@ -474,7 +504,6 @@ router.post("/:id/comments", async (req, res) => {
       });
     }
 
-    // Verify issue exists in current community
     const issue = await Issue.findOne({
       _id: req.params.id,
       community: req.communityId,
@@ -487,12 +516,10 @@ router.post("/:id/comments", async (req, res) => {
       });
     }
 
-    // Only admins can post internal comments
     const canPostInternal = ["super_admin", "community_admin"].includes(
       req.user.role
     );
 
-    // Create comment
     const comment = new Comment({
       content: content.trim(),
       issue: issue._id,
@@ -506,14 +533,30 @@ router.post("/:id/comments", async (req, res) => {
     await comment.populate("author", "name email avatar role");
 
     console.log(`Comment added to issue "${issue.title}" by ${req.user.name}`);
-    const io = req.app.get("io");
+
+    // --- CREATE NOTIFICATION ---
+    // Notify the issue creator, ONLY if they aren't the one commenting
+    if (issue.createdBy.toString() !== req.user._id.toString()) {
+      createNotification(
+        issue.createdBy,
+        issue.community,
+        'NEW_COMMENT',
+        `${req.user.name} commented on your issue: "${issue.title}"`,
+        `/app/issues/${issue._id}`,
+        req.user._id
+      );
+    }
+    // --- END NOTIFICATION ---
+
+    const io = getIO(); // Use getIO()
     const populatedComment = comment.toObject();
     io.to(issue._id.toString()).emit("comment:new", populatedComment);
     console.log(`Socket: Emitted 'comment:new' to room ${issue._id}`);
+    
     res.status(201).json({
       success: true,
       message: "Comment added successfully",
-      data: { comment },
+      data: { comment: populatedComment }, // Send populated comment back
     });
   } catch (error) {
     console.error("Add comment error:", error);
@@ -531,7 +574,6 @@ router.get("/:id/comments", async (req, res) => {
   try {
     const { page = 1, limit = 50 } = req.query;
 
-    // Verify issue exists in current community
     const issue = await Issue.findOne({
       _id: req.params.id,
       community: req.communityId,
@@ -544,7 +586,6 @@ router.get("/:id/comments", async (req, res) => {
       });
     }
 
-    // Build filter - residents can't see internal comments
     const filter = { issue: issue._id };
     if (!["super_admin", "community_admin"].includes(req.user.role)) {
       filter.isInternal = false;
@@ -582,6 +623,8 @@ router.get("/:id/comments", async (req, res) => {
 router.get("/stats/overview", async (req, res) => {
   try {
     const communityId = req.communityId;
+    
+    // 1. General Stats
     const statsPromise = Issue.aggregate([
       { $match: { community: communityId } },
       {
@@ -613,16 +656,11 @@ router.get("/stats/overview", async (req, res) => {
     // 2. Stats by Category
     const categoryStatsPromise = Issue.aggregate([
       { $match: { community: communityId } },
-      {
-        $group: {
-          _id: "$category",
-          count: { $sum: 1 },
-        },
-      },
+      { $group: { _id: "$category", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]);
 
-    // *** NEW: 3. Stats by AI Sentiment ***
+    // 3. Stats by AI Sentiment
     const sentimentStatsPromise = Issue.aggregate([
       {
         $match: {
@@ -630,15 +668,10 @@ router.get("/stats/overview", async (req, res) => {
           "aiAnalysis.sentiment": { $ne: null },
         },
       },
-      {
-        $group: {
-          _id: "$aiAnalysis.sentiment",
-          count: { $sum: 1 },
-        },
-      },
+      { $group: { _id: "$aiAnalysis.sentiment", count: { $sum: 1 } } },
     ]);
 
-    // *** NEW: 4. Average Resolution Time ***
+    // 4. Average Resolution Time
     const resolutionTimePromise = Issue.aggregate([
       {
         $match: {
@@ -666,7 +699,6 @@ router.get("/stats/overview", async (req, res) => {
       },
     ]);
 
-    // Run all aggregation queries in parallel
     const [stats, categoryStats, sentimentStats, resolutionStats] =
       await Promise.all([
         statsPromise,
@@ -692,9 +724,9 @@ router.get("/stats/overview", async (req, res) => {
     res.json({
       success: true,
       data: {
-        overview: { ...overview, ...resolution }, // Combine overview and resolution stats
+        overview: { ...overview, ...resolution },
         categories: categoryStats,
-        sentiments: sentimentStats, // Add new sentiment data
+        sentiments: sentimentStats,
       },
     });
   } catch (error) {

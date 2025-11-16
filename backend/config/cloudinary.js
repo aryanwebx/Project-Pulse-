@@ -201,5 +201,5 @@ module.exports = {
   uploadMultipleImages,
   deleteImage,
   getCloudinaryConfig,
-  cloudinary // Export the cloudinary instance for direct use if needed
+  cloudinary 
 };

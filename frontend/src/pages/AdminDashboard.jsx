@@ -18,12 +18,13 @@ const AdminDashboard = () => {
                 <p className="text-sm text-blue-700">View, edit roles, and manage community members.</p>
             </Link>
             {/* Add more links here later, e.g., for Community Settings */}
-             <div
-                className="block p-6 bg-gray-50 rounded-lg border border-gray-200 cursor-not-allowed"
-             >
-                <h3 className="font-semibold text-gray-500 mb-2">Community Settings (Coming Soon)</h3>
-                <p className="text-sm text-gray-400">Configure community details and preferences.</p>
-            </div>
+             <Link
+            to="/app/admin/settings" // Link to the new page
+            className="block p-6 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 transition-colors"
+          >
+            <h3 className="font-semibold text-green-800 mb-2">Community Settings</h3>
+            <p className="text-sm text-green-700">Configure categories, AI features, and theme.</p>
+          </Link>
         </div>
       </div>
     </div>

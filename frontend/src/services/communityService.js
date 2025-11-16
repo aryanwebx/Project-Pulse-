@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios from '../config/axios';
 
 export const communityService = {
   // Get all communities (for registration dropdown)
@@ -39,21 +39,48 @@ export const communityService = {
 
   // --- NEW: Admin Functions ---
 
-  /**
+ /**
    * Fetches the list of members for the current community.
-   * @param {object} filters - Optional filters (e.g., { page: 1, limit: 20, role: '', search: '' })
+   * @param {number} [page=1] - The page number to fetch.
+   * @param {number} [limit=20] - The number of items per page.
+   * @param {object} [filters={}] - Optional filters (e.g., { role: '', search: '' })
    * @returns {Promise<object>} - The API response data (includes members, pagination)
    */
-  async getCommunityMembers(filters = {}) {
+  async getCommunityMembers(page = 1, limit = 20, filters = {}) { // <-- MODIFIED
     try {
-      const params = new URLSearchParams(filters)
-      // Tenant context is handled by middleware, no communityId needed here
-      const response = await axios.get(`/api/communities/members?${params.toString()}`)
+      const params = new URLSearchParams({ // <-- MODIFIED
+        page: page.toString(),
+        limit: limit.toString(),
+        ...filters,
+      });
+      
+      const response = await axios.get(`/api/communities/members?${params.toString()}`);
       console.log("getCommunityMembers response:", response.data);
-      return response.data.data || { members: [], total: 0 } // Return default structure
+      // Return the full data object, which includes pagination
+      return response.data.data || { members: [], total: 0, totalPages: 1, currentPage: 1 }; 
     } catch (error) {
       console.error("Error in getCommunityMembers:", error.response?.data || error.message);
-      throw new Error(error.response?.data?.message || 'Failed to fetch members')
+      throw new Error(error.response?.data?.message || 'Failed to fetch members');
+    }
+  },
+
+  // *** ADD THIS NEW FUNCTION ***
+  /**
+   * Updates the settings for the current community. (Admin only)
+   * @param {object} settingsData - The settings object to update
+   * @returns {Promise<object>} - The updated community object
+   */
+  async updateCommunitySettings(settingsData) {
+    try {
+      // The backend route is PUT /api/communities/settings
+      // The tenant middleware handles which community to update.
+      const response = await axios.put('api/communities/settings', {
+        settings: settingsData,
+      });
+      return response.data.data.community; // Return the full updated community
+    } catch (error) {
+      console.error("Error in updateCommunitySettings:", error.response?.data || error.message);
+      throw new Error(error.response?.data?.error || 'Failed to update settings');
     }
   },
 

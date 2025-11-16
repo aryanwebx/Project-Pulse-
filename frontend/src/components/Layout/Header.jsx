@@ -1,9 +1,10 @@
+import {Link} from 'react-router'
 import { useAuth } from '../../contexts/AuthContext'
 import CommunityDisplay from '../Community/CommunityDisplay'
+import NotificationBell from './NotificationBell';
 
 const Header = () => {
   const { user, logout } = useAuth()
-
   const handleLogout = () => {
     logout()
     window.location.href = '/'
@@ -23,13 +24,20 @@ const Header = () => {
           
           {/* Community Display - Shows user's single community */}
           <div className="min-w-0 flex-1 max-w-md">
-            <CommunityDisplay />
+          {user.role!='super_admin' ? <CommunityDisplay/>:""}
+            {/* <CommunityDisplay /> */}
           </div>
         </div>
         
         <div className="flex items-center space-x-3 shrink-0">
           {user ? (
             <div className="flex items-center space-x-3">
+              <NotificationBell />
+              <Link
+                to="/app/profile"
+                className='flex items-center space-x-3 p-1 rounded-lg hover:bg-gray-100 transition-colors'
+                title="Account Settings"
+                >
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-medium text-gray-900 truncate max-w-32">
                   {user.name}
@@ -43,6 +51,7 @@ const Header = () => {
                   {user.name?.charAt(0).toUpperCase() || 'U'}
                 </span>
               </div>
+              </Link>
               <button 
                 onClick={handleLogout}
                 className="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded"

@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useCommunity } from "../contexts/CommunityContext";
 import { dashboardService } from "../services/dashboardService";
-import { Link } from "react-router";
-import CategoryChart from "../components/Dashboard/CategoryChart"; // *** NEW IMPORT ***
-import SentimentChart from "../components/Dashboard/SentimentChart"; // *** NEW IMPORT ***
+import { Link,Navigate } from "react-router";
+import CategoryChart from "../components/Dashboard/CategoryChart"; 
+import SentimentChart from "../components/Dashboard/SentimentChart"; 
 
 const formatHours = (hours) => {
   if (!hours || hours <= 0) return "N/A";
@@ -27,8 +27,11 @@ const Dashboard = () => {
   useEffect(() => {
     const loadDashboardData = async () => {
       // Don't fetch if community isn't loaded
-      if (!currentCommunity) return; 
-
+    if (!currentCommunity && user?.role !== 'super_admin') {
+          console.log("Dashboard: No community and not super admin, skipping data load.");
+          setLoading(false);
+          return; // Exit if no community and not super admin
+      }
       setLoading(true)
       try {
         // Fetch stats and issues in parallel
@@ -60,6 +63,12 @@ if (!communityLoading && currentCommunity) {
     }
   }, [currentCommunity, communityLoading])
 
+
+  if (user?.role === 'super_admin') {
+    // Option 1: Redirect immediately to their dashboard
+     return <Navigate to="/app/superadmin" replace />
+
+  }
   // Use stats from community object instead of separate API call
   // const stats = currentCommunity?.community?.stats;
   const getPriorityColor = (priority) => {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { superAdminService } from '../services/superAdminService';
-import { communityService } from '../services/communityService'; // To get list of communities for dropdown
+import { communityService } from '../services/communityService';
+import PaginationControls from '../components/Layout/PaginationControls';
 
 const GlobalUserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -8,17 +9,33 @@ const GlobalUserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Load all users and all communities
-  const loadData = async () => {
+  // ADD PAGINATION STATE
+  const [pagination, setPagination] = useState({
+    page: 1,
+    totalPages: 1,
+    total: 0,
+  });
+
+  // RENAME AND UPDATE loadData
+  const loadPageData = async () => {
     setLoading(true);
     setError('');
     try {
-      const [allUsers, commData] = await Promise.all([
-        superAdminService.getAllUsers(),
-        communityService.getAllCommunities() // Use existing service
+      // Pass current page to the service
+      const [usersData, commData] = await Promise.all([
+        superAdminService.getAllUsers(pagination.page, 20), // 20 per page
+        communityService.getAllCommunities()
       ]);
-      setUsers(allUsers || []);
+      
+      setUsers(usersData.users || []);
       setCommunities(commData.communities || []);
+
+      // Set pagination data from the response
+      setPagination({
+        page: usersData.currentPage || 1,
+        totalPages: usersData.totalPages || 1,
+        total: usersData.total || 0,
+      });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -26,9 +43,17 @@ const GlobalUserManagement = () => {
     }
   };
 
+  // UPDATE useEffect to re-run on page change
   useEffect(() => {
-    loadData();
-  }, []);
+    loadPageData();
+  }, [pagination.page]); // Re-run when pagination.page changes
+
+  // ADD page change handler
+  const handlePageChange = (newPage) => {
+    if (newPage > 0 && newPage <= pagination.totalPages && newPage !== pagination.page) {
+      setPagination((prev) => ({ ...prev, page: newPage }));
+    }
+  };
 
   const handleUserUpdate = async (userId, field, value) => {
     // Optimistic update
@@ -38,20 +63,26 @@ const GlobalUserManagement = () => {
 
     try {
       await superAdminService.updateUser(userId, { [field]: value });
-      // Optional: Full reload on success if needed
-      // loadData(); 
+      // On success, the optimistic update is kept.
     } catch (err) {
       setError(`Failed to update user: ${err.message}`);
-      loadData(); // Revert optimistic update on failure
+      loadPageData(); // Revert optimistic update on failure by refetching
     }
   };
 
-  if (loading) return <div>Loading all users...</div>;
-  if (error) return <div className="text-red-600">Error: {error}</div>;
+  if (loading && users.length === 0) return <div>Loading all users...</div>;
+  if (error && users.length === 0) return <div className="text-red-600">Error: {error}</div>;
 
   return (
     <div className="card">
-      <h1 className="text-2xl font-bold text-gray-900 mb-4">Global User Management ({users.length})</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-4">
+        Global User Management ({pagination.total}) {/* <-- Use total from pagination */}
+      </h1>
+      
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg">{error}</div>
+      )}
+
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -108,6 +139,16 @@ const GlobalUserManagement = () => {
             ))}
           </tbody>
         </table>
+      </div>
+      
+      {/* ADD PAGINATION CONTROLS */}
+      <div className="pt-4">
+        <PaginationControls
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={handlePageChange}
+          loading={loading}
+        />
       </div>
     </div>
   );

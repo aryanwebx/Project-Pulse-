@@ -1,28 +1,53 @@
-import axios from 'axios'
+import axios from '../config/axios';
 
 export const issueService = {
   // Get all issues with filtering and pagination
   async getIssues(filters = {}, page = 1, limit = 12) {
     try {
+      // *** START FIX ***
+      // Copy filters to avoid modifying the original object
+      const filterParams = { ...filters };
+      
+      // Check if the sort filter exists
+      if (filterParams.sort) {
+        let sortBy = filterParams.sort;
+        let sortOrder = 'desc'; // Default sortOrder
+
+        // Check if the sort value starts with '-', indicating descending
+        if (sortBy.startsWith('-')) {
+          sortOrder = 'desc';
+          sortBy = sortBy.substring(1); // Remove the '-'
+        } else {
+          sortOrder = 'asc';
+        }
+
+        // Add the new keys that the backend expects
+        filterParams.sortBy = sortBy;
+        filterParams.sortOrder = sortOrder;
+        
+        // Delete the old 'sort' key so it doesn't get sent
+        delete filterParams.sort;
+      }
+      // *** END FIX ***
+
       const params = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString(),
-        ...filters
+        ...filterParams // Use the modified filterParams
       })
 
       console.log('Fetching issues with params:', params.toString())
       const response = await axios.get(`/api/issues?${params.toString()}`)
       console.log('Issues response:', response.data)
       
+      // Use the correct pagination data from the response
       return response.data.data || response.data
     } catch (error) {
       console.error('Failed to fetch issues:', error.response?.data || error.message)
-      return this.getMockIssues()
+      // Fallback to mock data or empty array on error
+      return { issues: [], total: 0, totalPages: 1, currentPage: 1 };
     }
   },
-
-  // *** BUG 1: This function was a duplicate and has been removed. ***
-  // The correct function is below.
 
   // Create a new issue
   async createIssue(issueData) {
@@ -31,10 +56,8 @@ export const issueService = {
       if (issueData.images && issueData.images.length > 0) {
         const formData = new FormData()
         
-        // Append all form fields
         Object.keys(issueData).forEach(key => {
           if (key === 'images') {
-            // Append each image file
             issueData.images.forEach(image => {
               formData.append('images', image)
             })
@@ -49,12 +72,12 @@ export const issueService = {
             'Content-Type': 'multipart/form-data'
           }
         })
-        return response.data.data.issue || response.data.data // Return unwrapped issue
+        return response.data.data.issue || response.data.data
       } else {
         // No images, send as JSON
         console.log('Creating issue without images...')
         const response = await axios.post('/api/issues', issueData)
-        return response.data.data.issue || response.data.data // Return unwrapped issue
+        return response.data.data.issue || response.data.data
       }
     } catch (error) {
       console.error('Failed to create issue:', error.response?.data || error.message)
@@ -66,7 +89,7 @@ export const issueService = {
   async updateIssue(issueId, updateData) {
     try {
       const response = await axios.patch(`/api/issues/${issueId}`, updateData)
-      return response.data.data.issue || response.data.data // Return unwrapped issue
+      return response.data.data.issue || response.data.data
     } catch (error) {
       console.error('Failed to update issue:', error)
       throw error
@@ -91,13 +114,13 @@ export const issueService = {
       const response = await axios.get(`/api/issues/${issueId}`)
       console.log('Issue detail response:', response.data)
       
-      // *** FIX: Return the issue object directly, not the 'data' wrapper ***
+      // Return the issue object directly
       return response.data.data.issue || response.data.issue
       
     } catch (error) {
       console.error('Failed to fetch issue:', error.response?.data || error.message)
-      // Return mock data for development
-      return this.getMockIssueDetail(issueId)
+      // Return null or throw error so the page can show an error
+      throw new Error(error.response?.data?.error || 'Failed to fetch issue');
     }
   },
 
@@ -115,14 +138,33 @@ export const issueService = {
   // Update issue status (admin only)
   async updateIssueStatus(issueId, status, adminNotes = '') {
     try {
-      const response = await axios.patch(`/api/issues/${issueId}/status`, {
+      const response = await axios.put(`/api/issues/${issueId}/status`, {
         status,
         adminNotes
       })
-      return response.data.data.issue || response.data.data // Return unwrapped issue
+      // Return the unwrapped, updated issue object
+      return response.data.data.issue || response.data.data
     } catch (error) {
       console.error('Failed to update status:', error)
       throw error
     }
   },
-}
+
+  // *** NEW FUNCTION ***
+  /**
+   * Generates an AI-suggested reply for an issue. (Admin only)
+   * @param {string} issueId - The ID of the issue
+   * @returns {Promise<{suggestedReply: string}>} - The AI-generated reply
+   */
+  async getAiReply(issueId) {
+    try {
+      const response = await axios.post(`/api/issues/${issueId}/ai-reply`);
+      return response.data.data; // Returns { suggestedReply: "..." }
+    } catch (error) {
+      console.error('Failed to generate AI reply:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.error || 'Failed to get AI reply');
+    }
+  },
+};
+
+

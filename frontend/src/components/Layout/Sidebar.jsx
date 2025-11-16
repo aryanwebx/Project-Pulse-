@@ -1,5 +1,7 @@
 import { NavLink } from 'react-router'
 import { useAuth } from '../../contexts/AuthContext'
+import { useCommunity } from '../../contexts/CommunityContext';
+
 
 const Sidebar = () => {
   const { user } = useAuth()
@@ -19,7 +21,7 @@ const Sidebar = () => {
     // A super admin might also be a community admin, add both links
     // or just the super admin link which is more powerful.
     // Let's add an "Admin" link (for their own community)
-    navItems.push({ path: '/app/admin', label: 'Community Admin', icon: '⚙️' })
+    // navItems.push({ path: '/app/admin', label: 'Community Admin', icon: '⚙️' })
     // And a "Super Admin" link (for platform management)
     navItems.push({ path: '/app/superadmin', label: 'Super Admin', icon: '👑' })
   }

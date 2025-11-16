@@ -51,7 +51,8 @@ export const CommunityProvider = ({ children }) => {
   const value = {
     currentCommunity,
     loading,
-    hasMultipleCommunities: false // Add this flag for future use
+    hasMultipleCommunities: false, // Add this flag for future use
+    setCurrentCommunity,
   }
 
   return (
