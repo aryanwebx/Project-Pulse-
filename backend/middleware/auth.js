@@ -18,7 +18,7 @@ const auth = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Check if token is blacklisted
-    if (isTokenBlacklisted(token)) {
+    if (await isTokenBlacklisted(token)) {
       return res.status(401).json({ 
         success: false,
         error: 'Token has been invalidated' 
