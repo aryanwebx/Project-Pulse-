@@ -3,13 +3,16 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Community = require('../models/Community');
 const { auth } = require('../middleware/auth');
-
+const crypto = require('crypto');
+const { addToBlacklist } = require('../middleware/tokenBlacklist');
 const router = express.Router();
 
 // Helper function to generate JWT token
 const generateToken = (userId) => {
   return jwt.sign(
-    { userId }, 
+    { userId,
+      jti: crypto.randomBytes(16).toString('hex')
+     }, 
     process.env.JWT_SECRET, 
     { expiresIn: '7d' }
   );
