@@ -1,5 +1,5 @@
-const Notification = require('../models/Notification');
-const { getIO } = require('../socket'); // Import the getIO function
+const Notification = require("../models/Notification");
+const { getIO } = require("../socket"); // Import the getIO function
 
 /**
  * Creates and saves a notification, then emits it via socket.
@@ -25,17 +25,16 @@ const createNotification = async (userId, communityId, type, message, link, crea
     await notification.save();
 
     // 2. Get the populated notification to send to the client
-    const populatedNotification = await Notification.findById(notification._id)
-      .populate('createdBy', 'name avatar');
-      
+    const populatedNotification = await Notification.findById(notification._id).populate(
+      "createdBy",
+      "name avatar",
+    );
+
     // 3. Emit the notification via socket to the specific user's room
     const io = getIO();
-    io.to(`user:${userId}`).emit('notification:new', populatedNotification);
-    
-    console.log(`🔔 Notification sent to user: ${userId}`);
-
+    io.to(`user:${userId}`).emit("notification:new", populatedNotification);
   } catch (error) {
-    console.error('Error creating notification:', error.message);
+    console.error("Error creating notification:", error.message);
   }
 };
 

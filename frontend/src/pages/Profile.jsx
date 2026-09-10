@@ -210,8 +210,8 @@ const ChangePasswordForm = () => {
 // --- Main Page Component ---
 const Profile = () => {
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Account Settings</h1>
+    <div className="mx-auto max-w-4xl space-y-6 pb-8">
+      <div className="border-b border-[#e6e8ec] pb-6"><p className="text-xs font-bold uppercase tracking-[.13em] text-primary-600">Account</p><h1 className="mt-2 text-3xl font-bold tracking-[-.035em] text-[#182230]">Profile & security</h1><p className="mt-2 text-sm text-[#667085]">Keep your personal details and sign-in information up to date.</p></div>
       <ProfileDetailsForm />
       <ChangePasswordForm />
     </div>

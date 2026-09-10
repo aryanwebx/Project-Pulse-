@@ -8,8 +8,8 @@ const { uploadMultipleImages } = require("../config/cloudinary");
 
 // --- Import all required services ---
 const { analyzeIssue, generateAiReply } = require("../services/aiService");
-const { createNotification } = require('../services/notificationService');
-const { getIO } = require('../socket'); // Use getIO, not app.get('io')
+const { createNotification } = require("../services/notificationService");
+const { getIO } = require("../socket"); // Use getIO, not app.get('io')
 // ------------------------------------
 
 const router = express.Router();
@@ -31,6 +31,42 @@ const upload = multer({
       cb(new Error("Only image files are allowed!"), false);
     }
   },
+});
+
+// @desc    Preview AI suggestions while drafting an issue
+// @route   POST /api/issues/ai-suggest
+// @access  Private
+router.post("/ai-suggest", async (req, res) => {
+  try {
+    const { title = "", description = "" } = req.body;
+
+    if (title.trim().length < 3 || description.trim().length < 20) {
+      return res.json({ success: true, data: { suggestion: null } });
+    }
+
+    const allowedCategories =
+      Array.isArray(req.community.settings.categories) &&
+      req.community.settings.categories.length > 0
+        ? req.community.settings.categories
+        : ["Plumbing", "Electrical", "Security", "Cleanliness", "Parking", "Other"];
+
+    if (!req.community.settings.aiFeatures) {
+      return res.json({ success: true, data: { suggestion: null } });
+    }
+
+    const suggestion = await analyzeIssue(title.trim(), description.trim(), allowedCategories);
+
+    res.json({
+      success: true,
+      data: { suggestion },
+    });
+  } catch (error) {
+    console.error("AI suggestion error:", error.message);
+    res.status(503).json({
+      success: false,
+      error: "AI suggestions are temporarily unavailable",
+    });
+  }
 });
 
 // @desc    Get all issues for current community
@@ -82,9 +118,7 @@ router.get("/", async (req, res) => {
     const userId = req.user._id;
     const issues = issuesDocs.map((doc) => {
       const issue = doc.toObject();
-      issue.hasCurrentUserUpvoted = issue.upvotes.some((upvoteId) =>
-        upvoteId.equals(userId)
-      );
+      issue.hasCurrentUserUpvoted = issue.upvotes.some((upvoteId) => upvoteId.equals(userId));
       return issue;
     });
 
@@ -136,9 +170,7 @@ router.get("/:id", async (req, res) => {
 
     const issueObject = issue.toObject();
     const userId = req.user._id;
-    issueObject.hasCurrentUserUpvoted = issue.upvotes.some((user) =>
-      user._id.equals(userId)
-    );
+    issueObject.hasCurrentUserUpvoted = issue.upvotes.some((user) => user._id.equals(userId));
 
     res.json({
       success: true,
@@ -158,14 +190,7 @@ router.get("/:id", async (req, res) => {
 // @access  Private
 router.post("/", upload.array("images", 5), async (req, res) => {
   try {
-    const {
-      title,
-      description,
-      category,
-      urgency = "medium",
-      location,
-      tags = [],
-    } = req.body;
+    const { title, description, category, urgency = "medium", location, tags = [] } = req.body;
 
     let uploadedImages = [];
 
@@ -176,21 +201,16 @@ router.post("/", upload.array("images", 5), async (req, res) => {
       });
     }
 
-    const allowedCategories = req.community.settings.categories || [
-      "Plumbing",
-      "Electrical",
-      "Security",
-      "Cleanliness",
-      "Parking",
-      "Other",
-    ];
+    const allowedCategories =
+      Array.isArray(req.community.settings.categories) &&
+      req.community.settings.categories.length > 0
+        ? req.community.settings.categories
+        : ["Plumbing", "Electrical", "Security", "Cleanliness", "Parking", "Other"];
 
     if (!allowedCategories.includes(category)) {
       return res.status(400).json({
         success: false,
-        error: `Invalid category. Allowed categories: ${allowedCategories.join(
-          ", "
-        )}`,
+        error: `Invalid category. Allowed categories: ${allowedCategories.join(", ")}`,
       });
     }
 
@@ -214,16 +234,11 @@ router.post("/", upload.array("images", 5), async (req, res) => {
     let aiData = null;
     try {
       if (req.community.settings.aiFeatures) {
-        console.log("AI analysis enabled, attempting to analyze issue...");
         aiData = await analyzeIssue(title, description, allowedCategories);
       } else {
-        console.log("AI analysis disabled for this community.");
       }
     } catch (aiError) {
-      console.error(
-        "AI analysis failed, but proceeding with issue creation:",
-        aiError.message
-      );
+      console.error("AI analysis failed, but proceeding with issue creation:", aiError.message);
       // We explicitly set aiData to null and continue
     }
     // *** END FIX ***
@@ -235,17 +250,13 @@ router.post("/", upload.array("images", 5), async (req, res) => {
       urgency,
       location: location ? location.trim() : "",
       images: uploadedImages,
-      tags: Array.isArray(tags)
-        ? tags.map((tag) => tag.trim())
-        : tags
-        ? [tags.trim()]
-        : [],
+      tags: Array.isArray(tags) ? tags.map((tag) => tag.trim()) : tags ? [tags.trim()] : [],
       createdBy: req.user._id,
       community: req.communityId,
       aiAnalysis: aiData
         ? {
             predictedCategory: aiData.predictedCategory,
-            confidence: aiData.predictedCategory === category ? 0.9 : 0.6,
+            confidence: aiData.confidence,
             sentiment: aiData.sentiment,
             summary: aiData.summary,
             suggestedTags: aiData.suggestedTags,
@@ -257,17 +268,12 @@ router.post("/", upload.array("images", 5), async (req, res) => {
     await issue.save();
     await issue.populate("createdBy", "name email apartmentNumber avatar");
 
-    console.log(
-      `New issue created (AI: ${aiData ? 'success' : 'skipped/failed'}) with ${issue.images.length} images: "${issue.title}" by ${req.user.name} in ${req.community.name}`
-    );
-
     const issueObject = issue.toObject();
     issueObject.hasCurrentUserUpvoted = false;
 
     // *** ADDED: Emit socket event for new issue ***
     const io = getIO();
     io.to(req.communityId.toString()).emit("issue:new", issueObject);
-    console.log(`Socket: Emitted 'issue:new' to room ${req.communityId}`);
 
     res.status(201).json({
       success: true,
@@ -329,6 +335,51 @@ router.post("/:id/ai-reply", requireCommunityAdmin, async (req, res) => {
   }
 });
 
+// @desc    Update issue category (Admin only)
+// @route   PUT /api/issues/:id/category
+// @access  Private (Community Admin or Super Admin)
+router.put("/:id/category", requireCommunityAdmin, async (req, res) => {
+  try {
+    const { category } = req.body;
+    const allowedCategories =
+      Array.isArray(req.community.settings.categories) &&
+      req.community.settings.categories.length > 0
+        ? req.community.settings.categories
+        : ["Plumbing", "Electrical", "Security", "Cleanliness", "Parking", "Other"];
+
+    if (!allowedCategories.includes(category)) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid category. Allowed categories: ${allowedCategories.join(", ")}`,
+      });
+    }
+
+    const issue = await Issue.findOneAndUpdate(
+      { _id: req.params.id, community: req.communityId },
+      { category },
+      { new: true, runValidators: true },
+    )
+      .populate("createdBy", "name email apartmentNumber avatar")
+      .populate("assignedTo", "name email");
+
+    if (!issue) {
+      return res.status(404).json({ success: false, error: "Issue not found" });
+    }
+
+    const issueObject = issue.toObject();
+    getIO().to(issue._id.toString()).emit("issue:update", issueObject);
+
+    res.json({
+      success: true,
+      message: "Issue category updated successfully",
+      data: { issue: issueObject },
+    });
+  } catch (error) {
+    console.error("Update issue category error:", error);
+    res.status(500).json({ success: false, error: "Server error while updating category" });
+  }
+});
+
 // @desc    Update issue status (Admin only)
 // @route   PUT /api/issues/:id/status
 // @access  Private (Community Admin or Super Admin)
@@ -380,19 +431,15 @@ router.put("/:id/status", requireCommunityAdmin, async (req, res) => {
       await comment.save();
     }
 
-    console.log(
-      `🔔 Issue status updated: "${issue.title}" -> ${status} by ${req.user.name}`
-    );
-
     // --- CREATE NOTIFICATION ---
     if (issue.createdBy._id.toString() !== req.user._id.toString()) {
       createNotification(
         issue.createdBy._id,
         issue.community,
-        'STATUS_UPDATE',
+        "STATUS_UPDATE",
         `Your issue "${issue.title}" was updated to "${status}".`,
         `/app/issues/${issue._id}`,
-        req.user._id
+        req.user._id,
       );
     }
     // --- END NOTIFICATION ---
@@ -401,18 +448,15 @@ router.put("/:id/status", requireCommunityAdmin, async (req, res) => {
     await issue.populate([
       { path: "createdBy", select: "name email apartmentNumber avatar" },
       { path: "assignedTo", select: "name email" },
-      { path: "comments", populate: { path: "author", select: "name email avatar role" } }
+      { path: "comments", populate: { path: "author", select: "name email avatar role" } },
     ]);
 
     const issueObject = issue.toObject();
     const userId = req.user._id;
-    issueObject.hasCurrentUserUpvoted = issue.upvotes.some((upvoteId) =>
-      upvoteId.equals(userId)
-    );
+    issueObject.hasCurrentUserUpvoted = issue.upvotes.some((upvoteId) => upvoteId.equals(userId));
 
     const io = getIO(); // Use getIO()
     io.to(issue._id.toString()).emit("issue:update", issueObject);
-    console.log(`Socket: Emitted 'issue:update' to room ${issue._id}`);
 
     res.json({
       success: true,
@@ -449,22 +493,18 @@ router.post("/:id/upvote", async (req, res) => {
 
     if (hasUpvoted) {
       issue.upvotes.pull(req.user._id);
-      console.log(
-        `Upvote removed from "${issue.title}" by ${req.user.name}`
-      );
     } else {
       issue.upvotes.push(req.user._id);
-      console.log(`Upvote added to "${issue.title}" by ${req.user.name}`);
     }
 
     await issue.save();
-    
+
     // Repopulate all fields for the response
     await issue.populate([
       { path: "createdBy", select: "name email apartmentNumber avatar" },
       { path: "assignedTo", select: "name email" },
       { path: "upvotes", select: "name" },
-      { path: "comments", populate: { path: "author", select: "name email avatar role" } }
+      { path: "comments", populate: { path: "author", select: "name email avatar role" } },
     ]);
 
     const issueObject = issue.toObject();
@@ -472,9 +512,6 @@ router.post("/:id/upvote", async (req, res) => {
 
     const io = getIO(); // Use getIO()
     io.to(issue._id.toString()).emit("issue:update", issueObject);
-    console.log(
-      `Socket: Emitted 'issue:update' (from upvote) to room ${issue._id}`
-    );
 
     res.json({
       success: true,
@@ -516,9 +553,7 @@ router.post("/:id/comments", async (req, res) => {
       });
     }
 
-    const canPostInternal = ["super_admin", "community_admin"].includes(
-      req.user.role
-    );
+    const canPostInternal = ["super_admin", "community_admin"].includes(req.user.role);
 
     const comment = new Comment({
       content: content.trim(),
@@ -532,18 +567,16 @@ router.post("/:id/comments", async (req, res) => {
     await comment.save();
     await comment.populate("author", "name email avatar role");
 
-    console.log(`Comment added to issue "${issue.title}" by ${req.user.name}`);
-
     // --- CREATE NOTIFICATION ---
     // Notify the issue creator, ONLY if they aren't the one commenting
     if (issue.createdBy.toString() !== req.user._id.toString()) {
       createNotification(
         issue.createdBy,
         issue.community,
-        'NEW_COMMENT',
+        "NEW_COMMENT",
         `${req.user.name} commented on your issue: "${issue.title}"`,
         `/app/issues/${issue._id}`,
-        req.user._id
+        req.user._id,
       );
     }
     // --- END NOTIFICATION ---
@@ -551,8 +584,7 @@ router.post("/:id/comments", async (req, res) => {
     const io = getIO(); // Use getIO()
     const populatedComment = comment.toObject();
     io.to(issue._id.toString()).emit("comment:new", populatedComment);
-    console.log(`Socket: Emitted 'comment:new' to room ${issue._id}`);
-    
+
     res.status(201).json({
       success: true,
       message: "Comment added successfully",
@@ -623,7 +655,7 @@ router.get("/:id/comments", async (req, res) => {
 router.get("/stats/overview", async (req, res) => {
   try {
     const communityId = req.communityId;
-    
+
     // 1. General Stats
     const statsPromise = Issue.aggregate([
       { $match: { community: communityId } },
@@ -633,11 +665,7 @@ router.get("/stats/overview", async (req, res) => {
           totalIssues: { $sum: 1 },
           openIssues: {
             $sum: {
-              $cond: [
-                { $in: ["$status", ["open", "acknowledged", "in_progress"]] },
-                1,
-                0,
-              ],
+              $cond: [{ $in: ["$status", ["open", "acknowledged", "in_progress"]] }, 1, 0],
             },
           },
           resolvedIssues: {
@@ -684,10 +712,7 @@ router.get("/stats/overview", async (req, res) => {
       {
         $project: {
           resolutionTimeHours: {
-            $divide: [
-              { $subtract: ["$resolvedAt", "$createdAt"] },
-              1000 * 60 * 60,
-            ],
+            $divide: [{ $subtract: ["$resolvedAt", "$createdAt"] }, 1000 * 60 * 60],
           },
         },
       },
@@ -699,13 +724,12 @@ router.get("/stats/overview", async (req, res) => {
       },
     ]);
 
-    const [stats, categoryStats, sentimentStats, resolutionStats] =
-      await Promise.all([
-        statsPromise,
-        categoryStatsPromise,
-        sentimentStatsPromise,
-        resolutionTimePromise,
-      ]);
+    const [stats, categoryStats, sentimentStats, resolutionStats] = await Promise.all([
+      statsPromise,
+      categoryStatsPromise,
+      sentimentStatsPromise,
+      resolutionTimePromise,
+    ]);
 
     const defaultStats = {
       totalIssues: 0,
@@ -716,10 +740,7 @@ router.get("/stats/overview", async (req, res) => {
     };
 
     const overview = stats.length > 0 ? stats[0] : defaultStats;
-    const resolution =
-      resolutionStats.length > 0
-        ? resolutionStats[0]
-        : { avgResolutionHours: 0 };
+    const resolution = resolutionStats.length > 0 ? resolutionStats[0] : { avgResolutionHours: 0 };
 
     res.json({
       success: true,

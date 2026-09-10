@@ -101,7 +101,7 @@ const IssueHeader = ({ issue, onUpvote, isAdmin, onStatusUpdate }) => {
   };
 
   return (
-    <div className="card shadow-sm rounded-lg"> {/* Added shadow/rounded */}
+    <div className="card"> {/* Added shadow/rounded */}
       {/* Status and Actions Row */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4 pb-4 border-b border-gray-200"> {/* Added border */}
         {/* Status/Priority Display */}
@@ -155,7 +155,7 @@ const IssueHeader = ({ issue, onUpvote, isAdmin, onStatusUpdate }) => {
                   setAdminNotes(''); // Clear notes on open
                   setShowStatusModal(true);
               }}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="btn-primary px-4 py-2"
             >
               Update Status
             </button>

@@ -1,8 +1,9 @@
 # 🧠 Project Pulse API Documentation
 
 ## 📍 Base URL
+
 ```
-http://localhost:5000/api
+http://localhost:8000/api
 ```
 
 ---
@@ -32,16 +33,18 @@ x-community-subdomain: <community_subdomain>
 ### 🔐 **Authentication**
 
 #### 1. Register User
+
 **POST** `/auth/register`
 
 **Body:**
+
 ```json
 {
   "name": "string",
   "email": "string",
   "password": "string",
   "role": "super_admin|community_admin|resident",
-  "communitySubdomain": "string", 
+  "communitySubdomain": "string",
   "apartmentNumber": "string"
 }
 ```
@@ -49,9 +52,11 @@ x-community-subdomain: <community_subdomain>
 ---
 
 #### 2. Login
+
 **POST** `/auth/login`
 
 **Body:**
+
 ```json
 {
   "email": "string",
@@ -62,9 +67,11 @@ x-community-subdomain: <community_subdomain>
 ---
 
 #### 3. Get Current User
+
 **GET** `/auth/me`
 
 **Headers:**
+
 ```
 Authorization: Bearer <token>
 ```
@@ -72,9 +79,11 @@ Authorization: Bearer <token>
 ---
 
 #### 4. Update Profile
+
 **PUT** `/auth/profile`
 
 **Headers:**
+
 ```
 Authorization: Bearer <token>
 ```
@@ -84,14 +93,17 @@ Authorization: Bearer <token>
 ---
 
 #### 5. Change Password
+
 **PUT** `/auth/change-password`
 
 **Headers:**
+
 ```
 Authorization: Bearer <token>
 ```
 
 **Body:**
+
 ```json
 {
   "currentPassword": "string",
@@ -103,15 +115,18 @@ Authorization: Bearer <token>
 
 ### 🏢 **Communities**
 
-#### 1. Create Community *(Super Admin only)*
+#### 1. Create Community _(Super Admin only)_
+
 **POST** `/communities`
 
 **Headers:**
+
 ```
 Authorization: Bearer <super_admin_token>
 ```
 
 **Body:**
+
 ```json
 {
   "name": "string",
@@ -128,15 +143,18 @@ Authorization: Bearer <super_admin_token>
 
 ---
 
-#### 2. Get All Communities *(Super Admin only)*
+#### 2. Get All Communities _(Super Admin only)_
+
 **GET** `/communities?page=1&limit=10&search=query`
 
 ---
 
 #### 3. Get Current Community
+
 **GET** `/communities/current`
 
 **Headers:**
+
 ```
 Authorization: Bearer <token>
 x-community-subdomain: <subdomain>
@@ -145,9 +163,11 @@ x-community-subdomain: <subdomain>
 ---
 
 #### 4. Update Community Settings
+
 **PUT** `/communities/settings`
 
 **Headers:**
+
 ```
 Authorization: Bearer <admin_token>
 x-community-subdomain: <subdomain>
@@ -158,14 +178,17 @@ x-community-subdomain: <subdomain>
 ---
 
 #### 5. Get Community Members
+
 **GET** `/communities/members?role=resident&page=1&limit=20`
 
 ---
 
 #### 6. Update Member Role
+
 **PUT** `/communities/members/:userId/role`
 
 **Body:**
+
 ```json
 {
   "role": "resident|community_admin"
@@ -177,9 +200,11 @@ x-community-subdomain: <subdomain>
 ### 📋 **Issues**
 
 #### 1. Get All Issues
+
 **GET** `/issues?status=open&category=Plumbing&urgency=high&sortBy=createdAt&sortOrder=desc&page=1&limit=20&search=query`
 
 **Headers:**
+
 ```
 Authorization: Bearer <token>
 x-community-subdomain: <subdomain>
@@ -188,14 +213,17 @@ x-community-subdomain: <subdomain>
 ---
 
 #### 2. Get Single Issue
+
 **GET** `/issues/:id`
 
 ---
 
 #### 3. Create Issue
+
 **POST** `/issues`
 
 **Body:**
+
 ```json
 {
   "title": "string",
@@ -210,10 +238,12 @@ x-community-subdomain: <subdomain>
 
 ---
 
-#### 4. Update Issue Status *(Admin only)*
+#### 4. Update Issue Status _(Admin only)_
+
 **PUT** `/issues/:id/status`
 
 **Body:**
+
 ```json
 {
   "status": "open|acknowledged|in_progress|resolved",
@@ -225,14 +255,17 @@ x-community-subdomain: <subdomain>
 ---
 
 #### 5. Upvote Issue
+
 **POST** `/issues/:id/upvote`
 
 ---
 
 #### 6. Add Comment
+
 **POST** `/issues/:id/comments`
 
 **Body:**
+
 ```json
 {
   "content": "string",
@@ -243,11 +276,13 @@ x-community-subdomain: <subdomain>
 ---
 
 #### 7. Get Comments
+
 **GET** `/issues/:id/comments?page=1&limit=50`
 
 ---
 
 #### 8. Get Issue Statistics
+
 **GET** `/issues/stats/overview`
 
 ---
@@ -255,6 +290,7 @@ x-community-subdomain: <subdomain>
 ### ⚙️ **Response Formats**
 
 #### ✅ Success
+
 ```json
 {
   "success": true,
@@ -264,6 +300,7 @@ x-community-subdomain: <subdomain>
 ```
 
 #### ❌ Error
+
 ```json
 {
   "success": false,
@@ -275,12 +312,12 @@ x-community-subdomain: <subdomain>
 
 ### 🔄 **Real-Time Events (WebSocket)**
 
-| Event Name | Description |
-|-------------|--------------|
-| `join-community` | Join community room |
-| `join-issue` | Join issue room |
-| `new-issue` | Triggered when a new issue is created |
-| `issue-updated` | Triggered when issue details are updated |
+| Event Name       | Description                              |
+| ---------------- | ---------------------------------------- |
+| `join-community` | Join community room                      |
+| `join-issue`     | Join issue room                          |
+| `new-issue`      | Triggered when a new issue is created    |
+| `issue-updated`  | Triggered when issue details are updated |
 
 ---
 
@@ -289,6 +326,7 @@ x-community-subdomain: <subdomain>
 ### ⚙️ Railway Configuration
 
 **File:** `backend/railway.json`
+
 ```json
 {
   "$schema": "https://railway.app/railway.schema.json",
@@ -306,6 +344,7 @@ x-community-subdomain: <subdomain>
 ---
 
 ### 🚀 Deployment Steps
+
 1. Login to [Railway](https://railway.app/).
 2. Create a new project and connect your GitHub repository.
 3. Add your environment variables from `.env`.
@@ -317,5 +356,5 @@ x-community-subdomain: <subdomain>
 
 ---
 
-📘 **Author:** *Project Pulse Team*  
+📘 **Author:** _Project Pulse Team_  
 📅 **Last Updated:** October 2025

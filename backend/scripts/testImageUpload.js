@@ -6,7 +6,7 @@
 // // Load environment variables
 // dotenv.config();
 
-// const API_BASE = 'http://localhost:5000/api';
+// const API_BASE = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 8000}/api`;
 
 // const createTestImage = () => {
 //   // Create a simple red dot PNG (1x1 pixel)
@@ -21,7 +21,7 @@
 
 //     // Check Cloudinary configuration using the new config
 //     const { getCloudinaryConfig, configureCloudinary } = require('../config/cloudinary');
-    
+
 //     // Configure Cloudinary
 //     const configured = configureCloudinary();
 //     if (!configured) {
@@ -94,7 +94,7 @@
 //     return loginResponse.data.data.token;
 //   } catch (error) {
 //     console.log('⚠️ Test user not found, creating new test data...');
-    
+
 //     // Create test data
 //     try {
 //       // Create super admin first
@@ -141,7 +141,7 @@
 
 //   const formData = new FormData();
 //   const testImageBuffer = createTestImage();
-  
+
 //   // Create a fake file-like object for FormData
 //   formData.append('image', testImageBuffer, {
 //     filename: 'test-image.png',
@@ -177,7 +177,7 @@
 
 //   const formData = new FormData();
 //   const testImageBuffer = createTestImage();
-  
+
 //   // Add multiple test images
 //   for (let i = 1; i <= 3; i++) {
 //     formData.append('images', testImageBuffer, {
@@ -218,7 +218,7 @@
 //   // First upload an image
 //   const formData = new FormData();
 //   const testImageBuffer = createTestImage();
-  
+
 //   formData.append('image', testImageBuffer, {
 //     filename: 'issue-image.png',
 //     contentType: 'image/png'
@@ -274,7 +274,7 @@
 //   // First upload an image to delete
 //   const formData = new FormData();
 //   const testImageBuffer = createTestImage();
-  
+
 //   formData.append('image', testImageBuffer, {
 //     filename: 'delete-test.png',
 //     contentType: 'image/png'
@@ -318,113 +318,110 @@
 // // Run the test
 // testImageUpload();
 
-
-
-const mongoose = require('mongoose');
-const dotenv = require('dotenv');
-const axios = require('axios');
-const FormData = require('form-data');
+const mongoose = require("mongoose");
+const dotenv = require("dotenv");
+const axios = require("axios");
+const FormData = require("form-data");
 
 dotenv.config();
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 8000}/api`;
 
 const createTestImage = () => {
   const base64Image =
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIW2P4//8/AwAI/AL+osGZAAAAAElFTkSuQmCC';
-  return Buffer.from(base64Image, 'base64');
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIW2P4//8/AwAI/AL+osGZAAAAAElFTkSuQmCC";
+  return Buffer.from(base64Image, "base64");
 };
 
 const testFreshUpload = async () => {
   try {
-    console.log('🖼️ Fresh Image Upload Test\n');
+    console.log("🖼️ Fresh Image Upload Test\n");
 
     // Configure Cloudinary
-    const { configureCloudinary, getCloudinaryConfig } = require('../config/cloudinary');
+    const { configureCloudinary, getCloudinaryConfig } = require("../config/cloudinary");
     configureCloudinary();
-    
+
     const config = getCloudinaryConfig();
-    console.log('✅ Cloudinary configured:', config.cloud_name);
+    console.log("✅ Cloudinary configured:", config.cloud_name);
 
     // Connect to MongoDB
     await mongoose.connect(process.env.MONGODB_URI);
-    console.log('✅ Connected to MongoDB');
+    console.log("✅ Connected to MongoDB");
 
     // Step 1: Create a fresh user
-    console.log('\n1. Creating fresh test user...');
+    console.log("\n1. Creating fresh test user...");
     const userData = {
-      name: 'Fresh Test User',
+      name: "Fresh Test User",
       email: `fresh-${Date.now()}@test.com`,
-      password: 'password123',
-      role: 'resident',
-      communitySubdomain: 'sunrise',
-      apartmentNumber: '999'
+      password: "password123",
+      role: "resident",
+      communitySubdomain: "sunrise",
+      apartmentNumber: "999",
     };
 
     const registerResponse = await axios.post(`${API_BASE}/auth/register`, userData);
     const token = registerResponse.data.data.token;
-    console.log('   ✅ User created:', userData.email);
-    console.log('   🔑 Token obtained');
+    console.log("   ✅ User created:", userData.email);
+    console.log("   🔑 Token obtained");
 
     // Step 2: Verify the token works
-    console.log('\n2. Verifying token...');
+    console.log("\n2. Verifying token...");
     const meResponse = await axios.get(`${API_BASE}/auth/me`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
-    console.log('   ✅ Token verified');
-    console.log('   👤 User:', meResponse.data.data.user.name);
+    console.log("   ✅ Token verified");
+    console.log("   👤 User:", meResponse.data.data.user.name);
 
     // Step 3: Test single image upload
-    console.log('\n3. Testing image upload...');
-    
+    console.log("\n3. Testing image upload...");
+
     const formData = new FormData();
     const testImageBuffer = createTestImage();
-    
-    formData.append('image', testImageBuffer, {
-      filename: 'fresh-test.png',
-      contentType: 'image/png'
+
+    formData.append("image", testImageBuffer, {
+      filename: "fresh-test.png",
+      contentType: "image/png",
     });
 
     const uploadResponse = await axios.post(`${API_BASE}/upload/image`, formData, {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'x-community-subdomain': 'sunrise',
-        ...formData.getHeaders()
+        Authorization: `Bearer ${token}`,
+        "x-community-subdomain": "sunrise",
+        ...formData.getHeaders(),
       },
-      timeout: 30000
+      timeout: 30000,
     });
 
     if (uploadResponse.data.success) {
-      console.log('   ✅ Image upload successful!');
-      console.log('   📁 URL:', uploadResponse.data.data.image.url);
-      console.log('   🆔 Public ID:', uploadResponse.data.data.image.publicId);
-      console.log(uploadResponse.data.data)
+      console.log("   ✅ Image upload successful!");
+      console.log("   📁 URL:", uploadResponse.data.data.image.url);
+      console.log("   🆔 Public ID:", uploadResponse.data.data.image.publicId);
+      console.log(uploadResponse.data.data);
       // Step 4: Test image deletion
-      console.log('\n4. Testing image deletion...');
+      console.log("\n4. Testing image deletion...");
       await axios.delete(
         `${API_BASE}/upload/image/${encodeURIComponent(uploadResponse.data.data.image.publicId)}`,
         {
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'x-community-subdomain': 'sunrise'
-          }
-        }
+            Authorization: `Bearer ${token}`,
+            "x-community-subdomain": "sunrise",
+          },
+        },
       );
-      console.log('   ✅ Image deletion successful');
+      console.log("   ✅ Image deletion successful");
 
-      console.log('\n🎉 Fresh test completed successfully!');
+      console.log("\n🎉 Fresh test completed successfully!");
     }
-
   } catch (error) {
-    console.error('\n❌ Test failed:');
-    console.error('   Error:', error.response?.data?.error || error.message);
-    
+    console.error("\n❌ Test failed:");
+    console.error("   Error:", error.response?.data?.error || error.message);
+
     if (error.response?.data?.error) {
-      console.error('   Server error details:', error.response.data.error);
+      console.error("   Server error details:", error.response.data.error);
     }
   } finally {
     await mongoose.connection.close();
-    console.log('\n🔌 Database connection closed');
+    console.log("\n🔌 Database connection closed");
   }
 };
 

@@ -1,17 +1,25 @@
-const {
-  GoogleGenAI,
-  HarmCategory,
-  HarmBlockThreshold,
-} = require('@google/genai');
+const { GoogleGenAI, HarmCategory, HarmBlockThreshold } = require("@google/genai");
 
-const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenAI(process.env.GEMINI_API_KEY) : null;
 
 // In backend/services/aiService.js
 const safetySettings = [
-  { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-  { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-  { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-  { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+  {
+    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+  },
 ];
 
 /**
@@ -20,6 +28,10 @@ const safetySettings = [
  */
 const analyzeIssue = async (title, description, categories) => {
   try {
+    if (!genAI) {
+      throw new Error("GEMINI_API_KEY is not configured.");
+    }
+
     const prompt = `
       Analyze the following community issue report.
       You must respond *only* with a valid JSON object.
@@ -27,47 +39,65 @@ const analyzeIssue = async (title, description, categories) => {
       Issue Title: "${title}"
       Issue Description: "${description}"
 
-      The *only* valid categories you can choose from are: [${categories.join(
-        ', '
-      )}]
+      The *only* valid categories you can choose from are: [${categories.join(", ")}]
 
       Return a JSON object with this exact structure:
       1. "predictedCategory": (string) Your best guess from the *only* the valid categories list.
       2. "sentiment": (string) The sentiment of the description (Choose one: 'positive', 'neutral', 'negative').
       3. "summary": (string) A concise one-sentence summary (max 25 words).
       4. "suggestedTags": (array of strings) 3-5 relevant keywords from the description.
+      5. "confidence": (number) A value from 0 to 1 representing confidence in the category.
     `;
 
     const response = await genAI.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      model: "gemini-2.5-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
       safetySettings,
       generationConfig: {
-        responseMimeType: 'application/json',
+        responseMimeType: "application/json",
       },
     });
 
     // ### START FIX ###
     // We must change this to 'let' to allow modification
-    let jsonText = response.text;
+    let jsonText = typeof response.text === "function" ? response.text() : response.text;
     if (!jsonText) {
-      throw new Error('No text received from API.');
+      throw new Error("No text received from API.");
     }
 
     // Manually clean the response, as the model sometimes adds
     // markdown backticks even when asked for JSON.
-    if (jsonText.startsWith('```json')) {
+    if (jsonText.startsWith("```json")) {
       jsonText = jsonText.substring(7, jsonText.length - 3).trim();
-    } else if (jsonText.startsWith('```')) {
+    } else if (jsonText.startsWith("```")) {
       jsonText = jsonText.substring(3, jsonText.length - 3).trim();
     }
     // ### END FIX ###
 
     // This line (was line 74) will now parse the *cleaned* string
-    return JSON.parse(jsonText);
-    
+    const result = JSON.parse(jsonText);
+    const predictedCategory = categories.find(
+      (category) =>
+        category.toLowerCase() === String(result.predictedCategory).trim().toLowerCase(),
+    );
+
+    if (!predictedCategory) {
+      throw new Error("AI returned a category outside the community category list.");
+    }
+
+    return {
+      predictedCategory,
+      sentiment: ["positive", "neutral", "negative"].includes(result.sentiment)
+        ? result.sentiment
+        : "neutral",
+      summary: typeof result.summary === "string" ? result.summary.trim() : "",
+      suggestedTags: Array.isArray(result.suggestedTags)
+        ? result.suggestedTags.filter((tag) => typeof tag === "string").slice(0, 5)
+        : [],
+      confidence: Math.min(1, Math.max(0, Number(result.confidence) || 0)),
+    };
   } catch (error) {
-    console.error('Gemini API error:', error.message);
+    console.error("Gemini API error:", error.message);
     console.error(error); // Log the full error
     return null;
   }
@@ -81,21 +111,21 @@ const analyzeIssue = async (title, description, categories) => {
 const generateAiReply = async (issue) => {
   try {
     // Select a prompt based on the issue's status
-    let promptInstruction = '';
+    let promptInstruction = "";
     switch (issue.status) {
-      case 'open':
+      case "open":
         promptInstruction =
           "Acknowledge the user for reporting the issue and assure them that it has been received and will be reviewed by the admin team shortly. Be professional and empathetic.";
         break;
-      case 'acknowledged':
+      case "acknowledged":
         promptInstruction =
           "Inform the user that the issue has been acknowledged and is now in the queue for the maintenance or relevant team. Provide a soft assurance that it will be addressed.";
         break;
-      case 'in_progress':
+      case "in_progress":
         promptInstruction =
           "Provide a brief update stating that the issue is actively being worked on. If an admin note is available from a previous status change, you can reference it. Reassure them that a resolution is underway.";
         break;
-      case 'resolved':
+      case "resolved":
         promptInstruction =
           "Inform the user that the issue has been marked as resolved. Thank them for their patience and (optional) ask them to confirm if the resolution is satisfactory.";
         break;
@@ -125,32 +155,32 @@ const generateAiReply = async (issue) => {
     `;
 
     const response = await genAI.models.generateContent({
-      model: 'gemini-2.5-flash', 
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      model: "gemini-2.5-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
       safetySettings,
       generationConfig: {
-        responseMimeType: 'application/json',
+        responseMimeType: "application/json",
       },
     });
 
     let jsonText = response.text;
     if (!jsonText) {
-      throw new Error('No text received from AI.');
+      throw new Error("No text received from AI.");
     }
 
     // Clean markdown backticks (your existing fix)
-    if (jsonText.startsWith('```json')) {
+    if (jsonText.startsWith("```json")) {
       jsonText = jsonText.substring(7, jsonText.length - 3).trim();
-    } else if (jsonText.startsWith('```')) {
+    } else if (jsonText.startsWith("```")) {
       jsonText = jsonText.substring(3, jsonText.length - 3).trim();
     }
 
     return JSON.parse(jsonText);
   } catch (error) {
-    console.error('Gemini API (generateAiReply) error:', error.message);
+    console.error("Gemini API (generateAiReply) error:", error.message);
     // Return null or throw a specific error
     throw new Error(`AI reply generation failed: ${error.message}`);
   }
 };
 
-module.exports = { analyzeIssue, generateAiReply }; 
+module.exports = { analyzeIssue, generateAiReply };

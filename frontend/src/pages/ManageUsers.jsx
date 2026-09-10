@@ -114,9 +114,8 @@ const ManageUsers = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Manage Community Users</h1>
-      <p className="text-gray-600">Total manageable users: {pagination.total}</p>
+    <div className="mx-auto max-w-7xl space-y-6 pb-8">
+      <div className="border-b border-[#e6e8ec] pb-6"><p className="text-xs font-bold uppercase tracking-[.13em] text-primary-600">Administration</p><h1 className="mt-2 text-3xl font-bold tracking-[-.035em] text-[#182230]">Community members</h1><p className="mt-2 text-sm text-[#667085]">{pagination.total} member{pagination.total === 1 ? '' : 's'} available to manage.</p></div>
 
       {/* Display error even if some members are loaded */}
       {error && (
@@ -135,7 +134,7 @@ const ManageUsers = () => {
         )}
         <div className="overflow-x-auto relative"> {/* Added relative for overlay */}
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-[#f9fafb]">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
@@ -144,10 +143,10 @@ const ManageUsers = () => {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-100 bg-white">
               {/* *** NOTE: members array is now pre-filtered *** */}
               {members.map((member) => (
-                <tr key={member._id} className={loading ? 'opacity-70' : ''}> {/* Slightly dim row while loading */}
+                <tr key={member._id} className={`${loading ? 'opacity-70' : ''} hover:bg-[#fafbfc] transition-colors`}> {/* Slightly dim row while loading */}
                   {/* Name Cell */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{member.name}</div>

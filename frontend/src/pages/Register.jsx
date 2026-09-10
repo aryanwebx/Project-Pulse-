@@ -29,7 +29,6 @@ const Register = () => {
     const loadCommunities = async () => {
       try {
         const communitiesData = await communityService.getCommunities();
-        console.log(communitiesData.communities)
         setCommunities(communitiesData.communities);
       } catch (error) {
         setErrors({ communities: error.message });
@@ -115,15 +114,17 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-emerald-50 via-teal-50 to-cyan-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#f7f8fa] flex items-center justify-center py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full">
-        {/* Enhanced Card with Glassmorphism */}
-        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/20">
+        <Link
+          to="/"
+          className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-[#475467] hover:text-[#182230]">
+          <span aria-hidden="true">←</span> Back to home
+        </Link>
+        <div className="rounded-2xl border border-[#e6e8ec] bg-white p-7 shadow-[0_12px_30px_rgba(16,24,40,.06)] sm:p-9">
           {/* Logo & Header */}
           <div className="text-center mb-8">
-            <div className="mx-auto h-16 w-16 bg-linear-to-r from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform">
-              <span className="text-white font-black text-2xl tracking-tighter">PP</span>
-            </div>
+            <img src="/project-pulse-mark.svg" alt="Project Pulse" className="mx-auto h-12 w-12" />
             <h2 className="mt-6 text-3xl font-extrabold text-gray-900 tracking-tight">
               Join Project Pulse
             </h2>
@@ -136,7 +137,11 @@ const Register = () => {
           {errors.submit && (
             <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-lg text-red-700 text-sm flex items-center gap-2">
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
               </svg>
               {errors.submit}
             </div>
@@ -159,7 +164,7 @@ const Register = () => {
                 className={`mt-1 block w-full px-4 py-3 rounded-xl border ${
                   errors.name
                     ? "border-red-400 focus:ring-red-500"
-                    : "border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
+                    : "border-gray-200 focus:border-primary-500 focus:ring-primary-500"
                 } shadow-sm placeholder-gray-400 text-gray-900 transition-all duration-200 focus:outline-none focus:ring-2 sm:text-sm`}
                 placeholder="John Doe"
               />
@@ -183,7 +188,7 @@ const Register = () => {
                 className={`mt-1 block w-full px-4 py-3 rounded-xl border ${
                   errors.email
                     ? "border-red-400 focus:ring-red-500"
-                    : "border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
+                    : "border-gray-200 focus:border-primary-500 focus:ring-primary-500"
                 } shadow-sm placeholder-gray-400 text-gray-900 transition-all duration-200 focus:outline-none focus:ring-2 sm:text-sm`}
                 placeholder="you@example.com"
               />
@@ -206,9 +211,8 @@ const Register = () => {
                 className={`mt-1 block w-full px-4 py-3 rounded-xl border ${
                   errors.community
                     ? "border-red-400 focus:ring-red-500"
-                    : "border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
-                } shadow-sm text-gray-900 transition-all duration-200 focus:outline-none focus:ring-2 sm:text-sm disabled:bg-gray-50 disabled:cursor-not-allowed`}
-              >
+                    : "border-gray-200 focus:border-primary-500 focus:ring-primary-500"
+                } shadow-sm text-gray-900 transition-all duration-200 focus:outline-none focus:ring-2 sm:text-sm disabled:bg-gray-50 disabled:cursor-not-allowed`}>
                 <option value="">
                   {loadingCommunities ? "Loading communities..." : "Select a community"}
                 </option>
@@ -241,7 +245,7 @@ const Register = () => {
                 className={`mt-1 block w-full px-4 py-3 rounded-xl border ${
                   errors.password
                     ? "border-red-400 focus:ring-red-500"
-                    : "border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
+                    : "border-gray-200 focus:border-primary-500 focus:ring-primary-500"
                 } shadow-sm placeholder-gray-400 text-gray-900 transition-all duration-200 focus:outline-none focus:ring-2 sm:text-sm`}
                 placeholder="••••••••"
               />
@@ -252,7 +256,9 @@ const Register = () => {
 
             {/* Confirm Password */}
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-700">
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-semibold text-gray-700">
                 Confirm Password
               </label>
               <input
@@ -265,14 +271,12 @@ const Register = () => {
                 className={`mt-1 block w-full px-4 py-3 rounded-xl border ${
                   errors.confirmPassword
                     ? "border-red-400 focus:ring-red-500"
-                    : "border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
+                    : "border-gray-200 focus:border-primary-500 focus:ring-primary-500"
                 } shadow-sm placeholder-gray-400 text-gray-900 transition-all duration-200 focus:outline-none focus:ring-2 sm:text-sm`}
                 placeholder="••••••••"
               />
               {errors.confirmPassword && (
-                <p className="mt-1.5 text-xs text-red-600 font-medium">
-                  {errors.confirmPassword}
-                </p>
+                <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.confirmPassword}</p>
               )}
             </div>
 
@@ -280,19 +284,25 @@ const Register = () => {
             <button
               type="submit"
               disabled={isSubmitting || loadingCommunities}
-              className="group relative w-full flex justify-center py-3.5 px-4 rounded-xl text-white font-semibold text-sm tracking-wide
-                bg-linear-to-r from-emerald-500 to-teal-600
-                hover:from-emerald-600 hover:to-teal-700
-                focus:outline-none focus:ring-4 focus:ring-emerald-300
-                disabled:opacity-60 disabled:cursor-not-allowed
-                transform transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]
-                shadow-lg"
-            >
+              className="group relative w-full flex justify-center py-3.5 px-4 rounded-xl text-white font-semibold text-sm tracking-wide bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-4 focus:ring-primary-200 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-sm">
               {isSubmitting ? (
                 <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                   Creating your account...
                 </>
@@ -307,17 +317,10 @@ const Register = () => {
             Already have an account?{" "}
             <Link
               to="/login"
-              className="font-semibold text-emerald-600 hover:text-emerald-500 transition-colors duration-200"
-            >
+              className="font-semibold text-primary-600 hover:text-primary-700 transition-colors">
               Sign in here
             </Link>
           </p>
-        </div>
-
-        {/* Decorative Background Orbs */}
-        <div className="absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse animation-delay-2000"></div>
         </div>
       </div>
     </div>

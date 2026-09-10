@@ -5,10 +5,10 @@ import { Link } from 'react-router';
 
 // Stats Card Component (no changes)
 const StatCard = ({ title, value, icon }) => (
-  <div className="card text-center">
-    <div className="text-4xl mb-2">{icon}</div>
-    <div className="text-3xl font-bold text-gray-900 mb-1">{value}</div>
-    <div className="text-gray-600 font-medium">{title}</div>
+  <div className="card">
+    <div className="mb-5 flex h-9 w-9 items-center justify-center rounded-lg bg-primary-100 text-sm font-bold text-primary-700">{icon}</div>
+    <div className="text-3xl font-bold tracking-[-.04em] text-[#182230]">{value}</div>
+    <div className="mt-1 text-sm font-semibold text-[#667085]">{title}</div>
   </div>
 );
 
@@ -50,8 +50,9 @@ const CreateCommunityForm = ({ onCommunityCreated }) => {
 
   return (
     <div className="card">
-      <h2 className="text-xl font-semibold mb-4">Create New Community</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <h2 className="text-lg font-bold text-[#182230]">Create a community</h2>
+      <p className="mt-1 text-sm text-[#667085]">Set up a separate workspace for a new group.</p>
+      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         {error && <p className="text-red-600 text-sm">{error}</p>}
         {/* Row for Name, Subdomain, Email */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -141,31 +142,32 @@ const SuperAdminDashboard = () => {
 
  // Improved Loading/Error States
   if (loading) {
-      return <div className="p-6 text-center text-gray-500">Loading platform data...</div>;
+      return <div className="card text-center text-sm text-[#667085]">Loading platform data...</div>;
   }
    if (error) {
-     return <div className="p-6 text-center text-red-600 bg-red-50 rounded-lg">Error: {error}</div>;
+     return <div className="card text-center text-red-600 bg-red-50">Error: {error}</div>;
    }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Super Admin Dashboard</h1>
+    <div className="mx-auto max-w-7xl space-y-6 pb-8">
+      <div className="border-b border-[#e6e8ec] pb-6"><p className="text-xs font-bold uppercase tracking-[.13em] text-primary-600">Platform administration</p><h1 className="mt-2 text-3xl font-bold tracking-[-.035em] text-[#182230]">Platform overview</h1><p className="mt-2 text-sm text-[#667085]">Monitor the health of every Project Pulse workspace.</p></div>
 
       {/* Platform Stats */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard title="Total Communities" value={stats.totalCommunities ?? '?'} icon="🏢" />
-          <StatCard title="Total Users" value={stats.totalUsers ?? '?'} icon="👥" />
-          <StatCard title="Total Issues" value={stats.totalIssues ?? '?'} icon="🐛" />
-          <StatCard title="Open Issues" value={stats.openIssues ?? '?'} icon="🚨" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard title="Total communities" value={stats.totalCommunities ?? '?'} icon="01" />
+          <StatCard title="Total users" value={stats.totalUsers ?? '?'} icon="02" />
+          <StatCard title="Total issues" value={stats.totalIssues ?? '?'} icon="03" />
+          <StatCard title="Open issues" value={stats.openIssues ?? '?'} icon="04" />
         </div>
       )}
 
       {/* Quick Link to Global User Management */}
       <div className="card">
-        <h2 className="text-xl font-semibold mb-2">Platform Management</h2>
-        <Link to="/app/superadmin/users" className="text-primary-600 hover:underline font-medium">
-          Manage All Platform Users &rarr;
+        <h2 className="text-lg font-bold text-[#182230]">User administration</h2>
+        <p className="mt-1 text-sm text-[#667085]">Review roles, community membership, and account state across the platform.</p>
+        <Link to="/app/superadmin/users" className="btn-secondary mt-4">
+          Manage platform users <span aria-hidden="true">→</span>
         </Link>
       </div>
 
@@ -174,10 +176,10 @@ const SuperAdminDashboard = () => {
 
       {/* Community List */}
       <div className="card">
-        <h2 className="text-xl font-semibold mb-4">All Communities ({communities.length})</h2>
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-2"><div><h2 className="text-lg font-bold text-[#182230]">Communities</h2><p className="mt-1 text-sm text-[#667085]">{communities.length} workspace{communities.length === 1 ? '' : 's'} on the platform.</p></div></div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-[#f9fafb]">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subdomain</th>
@@ -185,9 +187,9 @@ const SuperAdminDashboard = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {communities.map((comm) => (
-                <tr key={comm._id}>
+                <tr key={comm._id} className="transition-colors hover:bg-[#fafbfc]">
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{comm.name}</td>
                   <td className="px-6 py-4 text-sm text-gray-500 font-mono">{comm.subdomain}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">{comm.contactEmail}</td>

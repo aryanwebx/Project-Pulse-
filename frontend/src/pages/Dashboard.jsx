@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useCommunity } from "../contexts/CommunityContext";
 import { dashboardService } from "../services/dashboardService";
-import { Link,Navigate } from "react-router";
-import CategoryChart from "../components/Dashboard/CategoryChart"; 
-import SentimentChart from "../components/Dashboard/SentimentChart"; 
+import { Link, Navigate } from "react-router";
+import CategoryChart from "../components/Dashboard/CategoryChart";
+import SentimentChart from "../components/Dashboard/SentimentChart";
 
 const formatHours = (hours) => {
   if (!hours || hours <= 0) return "N/A";
@@ -19,6 +19,7 @@ const formatHours = (hours) => {
 const Dashboard = () => {
   const { user } = useAuth();
   const { currentCommunity, loading: communityLoading } = useCommunity();
+  const communityStats = currentCommunity?.community?.stats || {};
   const [stats, setStats] = useState(null);
   const [categoryStats, setCategoryStats] = useState([]);
   const [sentimentStats, setSentimentStats] = useState([]);
@@ -27,47 +28,40 @@ const Dashboard = () => {
   useEffect(() => {
     const loadDashboardData = async () => {
       // Don't fetch if community isn't loaded
-    if (!currentCommunity && user?.role !== 'super_admin') {
-          console.log("Dashboard: No community and not super admin, skipping data load.");
-          setLoading(false);
-          return; // Exit if no community and not super admin
+      if (!currentCommunity && user?.role !== "super_admin") {
+        setLoading(false);
+        return; // Exit if no community and not super admin
       }
-      setLoading(true)
+      setLoading(true);
       try {
         // Fetch stats and issues in parallel
         const [statsData, issuesData] = await Promise.all([
           dashboardService.getDashboardStats(),
-          dashboardService.getRecentIssues(5) // Fetch 5 recent issues
+          dashboardService.getRecentIssues(5), // Fetch 5 recent issues
         ]);
-        
-        console.log("Stats Data:", statsData);
-        console.log("Issues Data:", issuesData);
 
         setStats(statsData.overview || {});
         setCategoryStats(statsData.categories || []);
         setSentimentStats(statsData.sentiments || []);
         setRecentIssues(issuesData.issues || []);
-        
       } catch (error) {
-        console.error('Failed to load dashboard data:', error)
+        console.error("Failed to load dashboard data:", error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-if (!communityLoading && currentCommunity) {
-      loadDashboardData()
+    if (!communityLoading && currentCommunity) {
+      loadDashboardData();
     } else if (!communityLoading && !currentCommunity) {
       // No community is assigned, so stop loading
-      setLoading(false)
+      setLoading(false);
     }
-  }, [currentCommunity, communityLoading])
+  }, [currentCommunity, communityLoading]);
 
-
-  if (user?.role === 'super_admin') {
+  if (user?.role === "super_admin") {
     // Option 1: Redirect immediately to their dashboard
-     return <Navigate to="/app/superadmin" replace />
-
+    return <Navigate to="/app/superadmin" replace />;
   }
   // Use stats from community object instead of separate API call
   // const stats = currentCommunity?.community?.stats;
@@ -124,9 +118,7 @@ if (!communityLoading && currentCommunity) {
       <div className="space-y-6">
         <div className="card text-center py-12">
           <div className="text-4xl mb-4">🏘️</div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            No Community Assigned
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">No Community Assigned</h2>
           <p className="text-gray-600 mb-6">
             It looks like you haven't been assigned to a community yet.
           </p>
@@ -141,66 +133,73 @@ if (!communityLoading && currentCommunity) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6 pb-8">
       {/* Welcome Section */}
-      <div className="card">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Welcome back, {user?.name}!
+      <div className="overflow-hidden rounded-2xl border border-primary-100 bg-[#f5f8ff] px-6 py-7 sm:px-8">
+        <p className="text-xs font-bold uppercase tracking-[.13em] text-primary-600">
+          Community overview
+        </p>
+        <h1 className="mt-2 text-3xl font-bold tracking-[-.035em] text-[#182230]">
+          Good to see you, {user?.name?.split(" ")[0] || "there"}.
         </h1>
         {currentCommunity && (
-          <p className="text-gray-600">
-            Managing issues for{" "}
-            <span className="font-semibold text-primary-600">
-              {currentCommunity.community.name}
-            </span>
+          <p className="mt-2 text-sm text-[#667085]">
+            Here’s the current picture for{" "}
+            <span className="font-semibold text-[#344054]">{currentCommunity.community.name}</span>
             {currentCommunity.community.description && (
-              <span className="text-gray-500 text-sm ml-2">
-                - {currentCommunity.community.description}
+              <span className="ml-2 text-[#667085]">
+                — {currentCommunity.community.description}
               </span>
             )}
           </p>
         )}
       </div>
-{/* *** UPDATED: Stats Grid (now uses fetched stats) *** */}
+      {/* *** UPDATED: Stats Grid (now uses fetched stats) *** */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="card text-center">
-            <div className="text-3xl font-bold text-primary-600 mb-2">{stats.totalIssues || 0}</div>
-            <div className="text-gray-600 font-medium">Total Issues</div>
-            <div className="text-sm text-gray-500 mt-1">All time</div>
-          </div>
-          
-          <div className="card text-center">
-            <div className="text-3xl font-bold text-orange-600 mb-2">{stats.openIssues || 0}</div>
-            <div className="text-gray-600 font-medium">Active Issues</div>
-            <div className="text-sm text-gray-500 mt-1">Open or In Progress</div>
-          </div>
-          
-          <div className="card text-center">
-            <div className="text-3xl font-bold text-green-600 mb-2">{stats.resolvedIssues || 0}</div>
-            <div className="text-gray-600 font-medium">Resolved</div>
-            <div className="text-sm text-gray-500 mt-1">Completed issues</div>
-          </div>
-          
-          {/* *** NEW: Avg Resolution Time Card *** */}
-          <div className="card text-center">
-            <div className="text-3xl font-bold text-purple-600 mb-2">
-                {formatHours(stats.avgResolutionHours)}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="card">
+            <div className="text-3xl font-bold tracking-[-.04em] text-[#182230] mb-2">
+              {stats.totalIssues || 0}
             </div>
-            <div className="text-gray-600 font-medium">Avg. Resolution</div>
-            <div className="text-sm text-gray-500 mt-1">Time per issue</div>
+            <div className="text-sm font-semibold text-[#344054]">Total issues</div>
+            <div className="mt-1 text-xs text-[#98a2b3]">All time</div>
+          </div>
+
+          <div className="card">
+            <div className="text-3xl font-bold tracking-[-.04em] text-[#b54708] mb-2">
+              {stats.openIssues || 0}
+            </div>
+            <div className="text-sm font-semibold text-[#344054]">Active issues</div>
+            <div className="mt-1 text-xs text-[#98a2b3]">Open or in progress</div>
+          </div>
+
+          <div className="card">
+            <div className="text-3xl font-bold tracking-[-.04em] text-[#067647] mb-2">
+              {stats.resolvedIssues || 0}
+            </div>
+            <div className="text-sm font-semibold text-[#344054]">Resolved</div>
+            <div className="mt-1 text-xs text-[#98a2b3]">Completed issues</div>
+          </div>
+
+          {/* *** NEW: Avg Resolution Time Card *** */}
+          <div className="card">
+            <div className="text-3xl font-bold tracking-[-.04em] text-[#6941c6] mb-2">
+              {formatHours(stats.avgResolutionHours)}
+            </div>
+            <div className="text-sm font-semibold text-[#344054]">Avg. resolution</div>
+            <div className="mt-1 text-xs text-[#98a2b3]">Time per issue</div>
           </div>
         </div>
       )}
 
       {/* *** NEW: Charts Row *** */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {categoryStats.length > 0 ? (
           <CategoryChart data={categoryStats} />
         ) : (
           <div className="card text-center py-10">No category data yet.</div>
         )}
-        
+
         {sentimentStats.length > 0 ? (
           <SentimentChart data={sentimentStats} />
         ) : (
@@ -212,12 +211,8 @@ if (!communityLoading && currentCommunity) {
       {!stats && currentCommunity && (
         <div className="card text-center py-8">
           <div className="text-4xl mb-2">📊</div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            No Stats Available
-          </h3>
-          <p className="text-gray-600">
-            Start reporting issues to see community statistics
-          </p>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Stats Available</h3>
+          <p className="text-gray-600">Start reporting issues to see community statistics</p>
         </div>
       )}
 
@@ -228,31 +223,25 @@ if (!communityLoading && currentCommunity) {
           <div className="space-y-3">
             <Link
               to="/app/issues/new"
-              className="flex items-center space-x-3 p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-primary-500 hover:text-primary-500 transition-colors group"
-            >
+              className="flex items-center space-x-3 p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-primary-500 hover:text-primary-500 transition-colors group">
               <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center group-hover:bg-primary-200 transition-colors">
                 <span className="text-lg">📝</span>
               </div>
               <div>
                 <div className="font-medium">Report New Issue</div>
-                <div className="text-sm text-gray-500">
-                  Submit a new community issue
-                </div>
+                <div className="text-sm text-gray-500">Submit a new community issue</div>
               </div>
             </Link>
 
             <Link
               to="/app/issues"
-              className="flex items-center space-x-3 p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-primary-500 hover:text-primary-500 transition-colors group"
-            >
+              className="flex items-center space-x-3 p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-primary-500 hover:text-primary-500 transition-colors group">
               <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
                 <span className="text-lg">📊</span>
               </div>
               <div>
                 <div className="font-medium">View All Issues</div>
-                <div className="text-sm text-gray-500">
-                  Browse and manage all issues
-                </div>
+                <div className="text-sm text-gray-500">Browse and manage all issues</div>
               </div>
             </Link>
           </div>
@@ -264,8 +253,7 @@ if (!communityLoading && currentCommunity) {
             <h2 className="text-xl font-semibold">Recent Issues</h2>
             <Link
               to="/app/issues"
-              className="text-primary-600 hover:text-primary-500 text-sm font-medium"
-            >
+              className="text-primary-600 hover:text-primary-500 text-sm font-medium">
               View All
             </Link>
           </div>
@@ -275,34 +263,27 @@ if (!communityLoading && currentCommunity) {
               recentIssues.map((issue) => (
                 <div
                   key={issue._id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                >
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2 mb-1">
-                      <p className="font-medium text-gray-900 truncate">
-                        {issue.title}
-                      </p>
+                      <p className="font-medium text-gray-900 truncate">{issue.title}</p>
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(
-                          issue.urgency
-                        )}`}
-                      >
+                          issue.urgency,
+                        )}`}>
                         {issue.urgency}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2 text-sm text-gray-500">
                       <span
                         className={`px-2 py-1 rounded-full text-xs ${getStatusColor(
-                          issue.status
-                        )}`}
-                      >
+                          issue.status,
+                        )}`}>
                         {issue.status}
                       </span>
                       <span>{issue.category}</span>
                       <span>•</span>
-                      <span>
-                        {new Date(issue.createdAt).toLocaleDateString()}
-                      </span>
+                      <span>{new Date(issue.createdAt).toLocaleDateString()}</span>
                     </div>
                   </div>
                   <div className="flex items-center space-x-1 text-gray-500 ml-4">
@@ -332,29 +313,18 @@ if (!communityLoading && currentCommunity) {
                 About {currentCommunity.community.name}
               </h3>
               <p className="text-gray-600 mb-4">
-                {currentCommunity.community.description ||
-                  "No description provided."}
+                {currentCommunity.community.description || "No description provided."}
               </p>
               <div className="space-y-2 text-sm">
                 <div className="flex items-center space-x-2">
-                  <svg
-                    className="w-4 h-4 text-gray-400"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
+                  <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                     <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                   </svg>
-                  <span className="text-gray-600">
-                    {currentCommunity.community.contactEmail}
-                  </span>
+                  <span className="text-gray-600">{currentCommunity.community.contactEmail}</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <svg
-                    className="w-4 h-4 text-gray-400"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
+                  <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                     <path
                       fillRule="evenodd"
                       d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
@@ -362,27 +332,21 @@ if (!communityLoading && currentCommunity) {
                     />
                   </svg>
                   <span className="text-gray-600">
-                    {currentCommunity.subdomain || "No location set"}
+                    {currentCommunity.community.subdomain || "No location set"}
                   </span>
                 </div>
               </div>
             </div>
             <div>
-              <h3 className="font-medium text-gray-900 mb-2">
-                Community Health
-              </h3>
+              <h3 className="font-medium text-gray-900 mb-2">Community Health</h3>
               <div className="space-y-3">
                 <div>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-gray-600">Issue Resolution Rate</span>
                     <span className="font-medium">
-                      {stats && stats.issueCount > 0
-                        ? `${Math.round(
-                            ((stats.issueCount - stats.activeIssueCount) /
-                              stats.issueCount) *
-                              100
-                          )}%`
-                        : "0%"}
+                      {stats?.totalIssues > 0
+                        ? `${Math.round((stats.resolvedIssues / stats.totalIssues) * 100)}%`
+                        : "N/A"}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
@@ -390,27 +354,20 @@ if (!communityLoading && currentCommunity) {
                       className="bg-green-600 h-2 rounded-full"
                       style={{
                         width:
-                          stats && stats.issueCount > 0
-                            ? `${
-                                ((stats.issueCount - stats.activeIssueCount) /
-                                  stats.issueCount) *
-                                100
-                              }%`
+                          stats?.totalIssues > 0
+                            ? `${(stats.resolvedIssues / stats.totalIssues) * 100}%`
                             : "0%",
-                      }}
-                    ></div>
+                      }}></div>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="text-center p-3 bg-blue-50 rounded-lg">
-                    <div className="text-lg font-bold text-blue-600">
-                      {stats?.activeIssueCount || 0}
-                    </div>
+                    <div className="text-lg font-bold text-blue-600">{stats?.openIssues || 0}</div>
                     <div className="text-blue-800">Active Issues</div>
                   </div>
                   <div className="text-center p-3 bg-green-50 rounded-lg">
                     <div className="text-lg font-bold text-green-600">
-                      {stats?.memberCount || 0}
+                      {communityStats.memberCount || 0}
                     </div>
                     <div className="text-green-800">Members</div>
                   </div>

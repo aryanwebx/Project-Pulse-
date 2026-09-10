@@ -70,14 +70,13 @@ const GlobalUserManagement = () => {
     }
   };
 
-  if (loading && users.length === 0) return <div>Loading all users...</div>;
-  if (error && users.length === 0) return <div className="text-red-600">Error: {error}</div>;
+  if (loading && users.length === 0) return <div className="card text-center text-sm text-[#667085]">Loading platform users...</div>;
+  if (error && users.length === 0) return <div className="card text-red-600">Error: {error}</div>;
 
   return (
-    <div className="card">
-      <h1 className="text-2xl font-bold text-gray-900 mb-4">
-        Global User Management ({pagination.total}) {/* <-- Use total from pagination */}
-      </h1>
+    <div className="mx-auto max-w-7xl space-y-6 pb-8">
+      <div className="border-b border-[#e6e8ec] pb-6"><p className="text-xs font-bold uppercase tracking-[.13em] text-primary-600">Platform administration</p><h1 className="mt-2 text-3xl font-bold tracking-[-.035em] text-[#182230]">All users</h1><p className="mt-2 text-sm text-[#667085]">{pagination.total} account{pagination.total === 1 ? '' : 's'} across every community.</p></div>
+      <div className="card">
       
       {error && (
         <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg">{error}</div>
@@ -85,7 +84,7 @@ const GlobalUserManagement = () => {
 
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-[#f9fafb]">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
@@ -94,9 +93,9 @@ const GlobalUserManagement = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="divide-y divide-gray-100 bg-white">
             {users.map((user) => (
-              <tr key={user._id}>
+              <tr key={user._id} className="transition-colors hover:bg-[#fafbfc]">
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{user.name}</td>
                 <td className="px-6 py-4 text-sm text-gray-500">{user.email}</td>
                 <td className="px-6 py-4 text-sm">
@@ -149,6 +148,7 @@ const GlobalUserManagement = () => {
           onPageChange={handlePageChange}
           loading={loading}
         />
+      </div>
       </div>
     </div>
   );

@@ -1,362 +1,325 @@
-import { Link } from 'react-router'
-import { useAuth } from '../contexts/AuthContext'
-import { useEffect, useRef } from 'react'
+import { Link } from "react-router";
+import { useAuth } from "../contexts/AuthContext";
+
+const ArrowUpRight = ({ className = "h-4 w-4" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M7 17 17 7M8 7h9v9"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const Check = () => (
+  <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="m5 12 4 4L19 6"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 const Home = () => {
-  const { isAuthenticated, user } = useAuth()
-  const canvasRef = useRef(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    let animationFrameId
-
-    const resizeCanvas = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-    }
-    resizeCanvas()
-    window.addEventListener('resize', resizeCanvas)
-
-    class Particle {
-      constructor() {
-        this.x = Math.random() * canvas.width
-        this.y = Math.random() * canvas.height
-        this.size = Math.random() * 2 + 1
-        this.speedX = (Math.random() - 0.5) * 1.2
-        this.speedY = (Math.random() - 0.5) * 1.2
-        const colors = [
-          { r: 59, g: 130, b: 246 },
-          { r: 147, g: 51, b: 234 },
-          { r: 236, g: 72, b: 153 },
-          { r: 168, g: 85, b: 247 },
-          { r: 99, g: 102, b: 241 },
-        ]
-        this.color = colors[Math.floor(Math.random() * colors.length)]
-      }
-
-      update() {
-        this.x += this.speedX
-        this.y += this.speedY
-
-        // bounce at edges
-        if (this.x < 0 || this.x > canvas.width) this.speedX *= -1
-        if (this.y < 0 || this.y > canvas.height) this.speedY *= -1
-      }
-
-      draw() {
-        const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 5)
-        gradient.addColorStop(0, `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, 1)`)
-        gradient.addColorStop(1, `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, 0)`)
-        ctx.fillStyle = gradient
-        ctx.beginPath()
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
-        ctx.fill()
-      }
-    }
-
-    const particles = []
-    const numParticles = Math.min((canvas.width * canvas.height) / 9000, 120)
-    for (let i = 0; i < numParticles; i++) {
-      particles.push(new Particle())
-    }
-
-    const animate = () => {
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.15)'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i]
-        p.update()
-        p.draw()
-
-        // connect nearby particles
-        for (let j = i + 1; j < particles.length; j++) {
-          const q = particles[j]
-          const dx = p.x - q.x
-          const dy = p.y - q.y
-          const distance = Math.sqrt(dx * dx + dy * dy)
-          if (distance < 120) {
-            const opacity = 0.2 * (1 - distance / 120)
-            ctx.strokeStyle = `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${opacity})`
-            ctx.lineWidth = 0.4
-            ctx.beginPath()
-            ctx.moveTo(p.x, p.y)
-            ctx.lineTo(q.x, q.y)
-            ctx.stroke()
-          }
-        }
-      }
-
-      animationFrameId = requestAnimationFrame(animate)
-    }
-
-    animate()
-
-    return () => {
-      cancelAnimationFrame(animationFrameId)
-      window.removeEventListener('resize', resizeCanvas)
-    }
-  }, [])
+  const { isAuthenticated, user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-slate-950 relative overflow-hidden">
-      {/* Canvas Background Animation */}
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 pointer-events-none z-0"
+    <div className="min-h-screen overflow-x-hidden bg-[#f6f5f1] text-[#172033] selection:bg-[#d95f2b] selection:text-white">
+      {/* Subtle paper/grid texture instead of the usual AI-style particle background. */}
+      <div
+        className="pointer-events-none fixed inset-0 opacity-[0.035]"
+        style={{
+          backgroundImage:
+            "linear-gradient(#172033 1px, transparent 1px), linear-gradient(90deg, #172033 1px, transparent 1px)",
+          backgroundSize: "32px 32px",
+        }}
       />
 
-      {/* Animated Background Orbs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[10%] w-[600px] h-[600px] bg-blue-600/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-        <div className="absolute top-[40%] right-[20%] w-[400px] h-[400px] bg-pink-600/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
-        <div className="absolute bottom-[30%] left-[15%] w-[450px] h-[450px] bg-violet-600/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1.5s'}}></div>
-      </div>
+      <header className="relative z-20 border-b border-[#172033]/10 bg-[#f6f5f1]/90 backdrop-blur-md">
+        <nav className="mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-10">
+          <Link to="/" className="flex items-center gap-3">
+            <img
+              src="/project-pulse-logo.svg"
+              alt="Project Pulse community workspace"
+              className="h-10 w-auto"
+            />
+          </Link>
 
-      {/* Navigation */}
-      <nav className="relative z-50 border-b border-white/10 bg-slate-950/50 backdrop-blur-2xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center group cursor-pointer">
-              <div className="relative">
-                <div className="absolute inset-0 bg-linear-to-r from-blue-500 via-purple-500 to-pink-500 rounded-2xl blur-lg opacity-75 group-hover:opacity-100 transition-opacity animate-pulse"></div>
-                <div className="relative h-12 w-12 bg-linear-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-2xl transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
-                  <span className="text-white font-bold text-xl">PP</span>
-                </div>
-              </div>
-              <span className="ml-4 text-2xl font-bold text-white">
-                Project Pulse
-              </span>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              {isAuthenticated ? (
-                <>
-                  <span className="text-gray-300 font-medium">Welcome, <span className="text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-pink-400 font-semibold">{user?.name}</span></span>
-                  <Link 
-                    to="/app/dashboard" 
-                    className="relative group px-8 py-3 rounded-2xl font-semibold text-white overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-linear-to-r from-blue-600 via-purple-600 to-pink-600"></div>
-                    <div className="absolute inset-0 bg-linear-to-r from-blue-400 via-purple-400 to-pink-400 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div className="absolute inset-0 bg-linear-to-r from-blue-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-75 blur-xl transition-opacity"></div>
-                    <span className="relative flex items-center gap-2">
-                      Go to App 
-                      <svg className="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                      </svg>
-                    </span>
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link 
-                    to="/login" 
-                    className="text-gray-300 hover:text-white px-6 py-3 rounded-xl font-medium transition-all duration-300 hover:bg-white/10"
-                  >
-                    Sign In
-                  </Link>
-                  <Link 
-                    to="/register" 
-                    className="relative group px-8 py-3 rounded-2xl font-semibold text-white overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-linear-to-r from-blue-600 via-purple-600 to-pink-600"></div>
-                    <div className="absolute inset-0 bg-linear-to-r from-blue-400 via-purple-400 to-pink-400 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div className="absolute inset-0 bg-linear-to-r from-blue-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-75 blur-xl transition-opacity"></div>
-                    <span className="relative">Get Started</span>
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-        <div className="text-center">
-          {/* Floating Badge */}
-          <div className="inline-flex items-center space-x-3 bg-linear-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 backdrop-blur-xl border border-white/20 rounded-full px-6 py-3 mb-12 shadow-2xl hover:scale-105 transition-transform duration-300">
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-linear-to-r from-purple-400 to-pink-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-linear-to-r from-purple-400 to-pink-400"></span>
-            </span>
-            <span className="text-sm font-semibold bg-linear-to-r from-blue-200 via-purple-200 to-pink-200 bg-clip-text text-transparent">AI-Powered Platform • Trusted by Communities</span>
-          </div>
-
-          <h1 className="text-7xl md:text-8xl font-black text-white mb-8 leading-none tracking-tight">
-            <span className="inline-block hover:scale-105 transition-transform duration-300">AI-Powered Issue</span>
-            <br />
-            <span className="relative inline-block mt-2">
-              <span className="absolute inset-0 bg-linear-to-r from-blue-400 via-purple-400 to-pink-400 blur-3xl opacity-60 animate-pulse"></span>
-              <span className="relative bg-linear-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent inline-block hover:scale-105 transition-transform duration-300">
-                Tracking Platform
-              </span>
-            </span>
-          </h1>
-          <p className="text-xl md:text-2xl text-gray-300 mb-16 max-w-4xl mx-auto leading-relaxed font-light">
-            Revolutionize community management with intelligent issue tracking. 
-            Harness the power of AI for smart suggestions, instant duplicate detection, 
-            and seamless workflow automation.
-          </p>
-          
-          {!isAuthenticated && (
-            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
-              <Link 
-                to="/register" 
-                className="relative group px-12 py-5 rounded-2xl font-bold text-lg text-white overflow-hidden shadow-2xl hover:shadow-purple-500/50 transition-all duration-300"
-              >
-                <div className="absolute inset-0 bg-linear-to-r from-blue-600 via-purple-600 to-pink-600"></div>
-                <div className="absolute inset-0 bg-linear-to-r from-blue-400 via-purple-400 to-pink-400 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="absolute inset-0 bg-linear-to-r from-blue-400 via-purple-400 to-pink-400 blur-2xl animate-pulse"></div>
-                </div>
-                <span className="relative flex items-center gap-3">
-                  Start Free Today
-                  <svg className="w-6 h-6 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
+          <div className="flex items-center gap-2 sm:gap-5">
+            {isAuthenticated ? (
+              <>
+                <span className="hidden text-sm text-[#172033]/60 sm:block">
+                  Welcome, <span className="font-semibold text-[#172033]">{user?.name}</span>
                 </span>
+                <Link
+                  to="/app/dashboard"
+                  className="inline-flex items-center gap-2 rounded-lg bg-[#172033] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#25324a]">
+                  Open dashboard <ArrowUpRight />
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="rounded-lg px-3 py-2.5 text-sm font-semibold text-[#172033]/70 transition hover:bg-[#172033]/5 hover:text-[#172033]">
+                  Sign in
+                </Link>
+                <Link
+                  to="/register"
+                  className="inline-flex items-center gap-2 rounded-lg bg-[#172033] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#25324a]">
+                  Get started <ArrowUpRight />
+                </Link>
+              </>
+            )}
+          </div>
+        </nav>
+      </header>
+
+      <main className="relative z-10">
+        {/* Hero */}
+        <section className="mx-auto max-w-7xl px-5 pb-20 pt-16 sm:px-8 sm:pt-20 lg:px-10 lg:pb-28 lg:pt-24">
+          <div className="grid items-end gap-12 lg:grid-cols-[1.1fr_.9fr] lg:gap-20">
+            <div>
+              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-[#172033]/10 bg-white/60 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-[#172033]/60">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#d95f2b]" />
+                Community operations, simplified
+              </div>
+
+              <h1 className="max-w-4xl text-[clamp(3.4rem,7.2vw,6.9rem)] font-black leading-[0.91] tracking-[-0.065em] text-[#172033]">
+                Turn local problems
+                <br />
+                into <span className="text-[#d95f2b]">visible progress.</span>
+              </h1>
+
+              <p className="mt-8 max-w-2xl text-lg leading-8 text-[#172033]/65 sm:text-xl">
+                Project Pulse gives communities one clear place to report issues, understand what
+                needs attention, and move work from complaint to resolution.
+              </p>
+
+              {!isAuthenticated && (
+                <div className="mt-9 flex flex-col items-start gap-3 sm:flex-row">
+                  <Link
+                    to="/register"
+                    className="group inline-flex items-center gap-3 rounded-lg bg-[#d95f2b] px-6 py-3.5 text-sm font-bold text-white shadow-[0_8px_24px_rgba(217,95,43,.18)] transition hover:-translate-y-0.5 hover:bg-[#c95121]">
+                    Start for free
+                    <ArrowUpRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </Link>
+                  <Link
+                    to="/login"
+                    className="inline-flex items-center rounded-lg border border-[#172033]/15 bg-white/50 px-6 py-3.5 text-sm font-bold text-[#172033] transition hover:bg-white">
+                    Sign in
+                  </Link>
+                </div>
+              )}
+
+              <div className="mt-10 flex flex-wrap gap-x-6 gap-y-2 text-xs font-semibold text-[#172033]/50">
+                <span className="flex items-center gap-2">
+                  <Check /> AI-assisted triage
+                </span>
+                <span className="flex items-center gap-2">
+                  <Check /> Duplicate detection
+                </span>
+                <span className="flex items-center gap-2">
+                  <Check /> Multi-community support
+                </span>
+              </div>
+            </div>
+
+            {/* Product preview: deliberately restrained, like a real SaaS product. */}
+            <div className="relative">
+              <div className="absolute -right-8 -top-8 hidden h-24 w-24 rounded-full border border-[#d95f2b]/20 lg:block" />
+              <div className="overflow-hidden rounded-2xl border border-[#172033]/10 bg-white shadow-[0_24px_70px_rgba(23,32,51,.12)]">
+                <div className="flex items-center justify-between border-b border-[#172033]/10 px-5 py-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#172033]/45">
+                      Community overview
+                    </p>
+                    <p className="mt-1 text-sm font-bold">Northside Residents</p>
+                  </div>
+                  <span className="rounded-md bg-[#eaf4ec] px-2.5 py-1 text-[11px] font-bold text-[#28643a]">
+                    Live
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 border-b border-[#172033]/10">
+                  {[
+                    ["24", "Open"],
+                    ["18", "Resolved"],
+                    ["6", "High priority"],
+                  ].map(([value, label]) => (
+                    <div
+                      key={label}
+                      className="border-r border-[#172033]/10 px-4 py-5 last:border-r-0">
+                      <p className="text-2xl font-black tracking-tight">{value}</p>
+                      <p className="mt-1 text-[11px] font-medium text-[#172033]/45">{label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-2 p-4">
+                  {[
+                    ["Street light out on 4th Ave", "High", "2h ago"],
+                    ["Overflowing bin near park entrance", "Medium", "5h ago"],
+                    ["Pothole by community center", "Low", "Yesterday"],
+                  ].map(([title, priority, time], index) => (
+                    <div
+                      key={title}
+                      className="flex items-center gap-3 rounded-xl border border-[#172033]/8 bg-[#fafaf8] p-3.5">
+                      <span
+                        className={`h-2 w-2 rounded-full ${index === 0 ? "bg-[#d95f2b]" : index === 1 ? "bg-[#d8a22b]" : "bg-[#6b7b91]"}`}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-bold">{title}</p>
+                        <p className="mt-1 text-[10px] text-[#172033]/40">{time}</p>
+                      </div>
+                      <span className="text-[10px] font-bold text-[#172033]/45">{priority}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="border-t border-[#172033]/10 bg-[#172033] px-5 py-4 text-white">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-white/65">AI triage</span>
+                    <span className="text-xs font-bold text-[#f3a27d]">3 suggestions ready</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Feature strip */}
+        <section className="border-y border-[#172033]/10 bg-white">
+          <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:px-10 lg:py-20">
+            <div className="mb-10 flex flex-col justify-between gap-5 md:flex-row md:items-end">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#d95f2b]">
+                  Built for the workflow
+                </p>
+                <h2 className="mt-3 max-w-2xl text-3xl font-black tracking-[-0.035em] sm:text-4xl">
+                  Less noise. Better decisions. Faster follow-through.
+                </h2>
+              </div>
+              <p className="max-w-md text-sm leading-6 text-[#172033]/55">
+                The product stays focused on the work: capture an issue, understand it, assign it,
+                and show people what changed.
+              </p>
+            </div>
+
+            <div className="grid gap-px overflow-hidden rounded-2xl border border-[#172033]/10 bg-[#172033]/10 md:grid-cols-3">
+              {[
+                {
+                  number: "01",
+                  title: "Smart issue tracking",
+                  body: "Capture reports with consistent categories, priorities, ownership, and status so nothing gets lost.",
+                },
+                {
+                  number: "02",
+                  title: "Useful AI insights",
+                  body: "Surface duplicate reports and suggestions that help admins spend less time sorting and more time acting.",
+                },
+                {
+                  number: "03",
+                  title: "Multiple communities",
+                  body: "Keep communities separate while giving admins a consistent operating model across every space.",
+                },
+              ].map((feature) => (
+                <article key={feature.number} className="group bg-white p-7 sm:p-8">
+                  <div className="flex items-start justify-between">
+                    <span className="font-mono text-xs font-bold text-[#d95f2b]">
+                      {feature.number}
+                    </span>
+                    <ArrowUpRight className="h-4 w-4 text-[#172033]/25 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[#d95f2b]" />
+                  </div>
+                  <h3 className="mt-12 text-xl font-black tracking-[-0.025em]">{feature.title}</h3>
+                  <p className="mt-3 text-sm leading-6 text-[#172033]/55">{feature.body}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Proof / stats */}
+        <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-10 lg:py-24">
+          <div className="grid gap-12 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#d95f2b]">
+                The outcome
+              </p>
+              <h2 className="mt-4 text-4xl font-black leading-tight tracking-[-0.04em] sm:text-5xl">
+                A clearer view of what your community needs.
+              </h2>
+              <p className="mt-5 max-w-lg text-base leading-7 text-[#172033]/60">
+                Replace scattered reports and manual sorting with a shared source of truth for
+                community issues.
+              </p>
+            </div>
+
+            <div className="grid overflow-hidden rounded-2xl border border-[#172033]/10 bg-white sm:grid-cols-3">
+              {[
+                ["99%", "Issues resolved", "Tracked from report to closure"],
+                ["50%", "Faster resolution", "Less time spent on triage"],
+                ["24/7", "AI monitoring", "Continuous issue intelligence"],
+              ].map(([value, title, body], index) => (
+                <div
+                  key={title}
+                  className={`p-7 sm:p-8 ${index !== 0 ? "border-t sm:border-l sm:border-t-0 border-[#172033]/10" : ""}`}>
+                  <p className="text-4xl font-black tracking-[-0.05em] text-[#172033]">{value}</p>
+                  <p className="mt-4 text-sm font-bold">{title}</p>
+                  <p className="mt-1.5 text-xs leading-5 text-[#172033]/45">{body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {!isAuthenticated && (
+          <section className="mx-auto max-w-7xl px-5 pb-20 sm:px-8 lg:px-10 lg:pb-24">
+            <div className="overflow-hidden rounded-2xl bg-[#172033] px-7 py-10 text-white sm:px-10 lg:flex lg:items-center lg:justify-between lg:px-12">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f3a27d]">
+                  Ready when you are
+                </p>
+                <h2 className="mt-3 text-3xl font-black tracking-[-0.035em] sm:text-4xl">
+                  Make every issue easier to act on.
+                </h2>
+                <p className="mt-3 max-w-xl text-sm leading-6 text-white/55">
+                  Set up your community workspace and start turning reports into organized,
+                  measurable progress.
+                </p>
+              </div>
+              <Link
+                to="/register"
+                className="mt-7 inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[#d95f2b] px-6 py-3.5 text-sm font-bold text-white transition hover:bg-[#c95121] lg:mt-0">
+                Create your workspace <ArrowUpRight />
               </Link>
-              <Link 
-                to="/login" 
-                className="group px-12 py-5 rounded-2xl font-bold text-lg bg-white/10 hover:bg-white/20 backdrop-blur-xl border-2 border-white/20 hover:border-purple-400/50 text-white shadow-2xl transform hover:scale-105 transition-all duration-300"
-              >
-                Sign In
-              </Link>
             </div>
-          )}
-        </div>
+          </section>
+        )}
+      </main>
 
-        {/* Features Grid */}
-        <div className="grid md:grid-cols-3 gap-8 mt-32 relative">
-          <div className="relative group perspective-1000">
-            <div className="absolute inset-0 bg-linear-to-r from-blue-600 via-cyan-500 to-blue-400 rounded-3xl opacity-0 group-hover:opacity-100 blur-2xl transition-all duration-500 animate-pulse"></div>
-            <div className="relative bg-linear-to-br from-blue-500/10 via-cyan-500/10 to-blue-400/10 backdrop-blur-2xl rounded-3xl p-10 border border-blue-500/30 hover:border-cyan-400/50 shadow-2xl transform hover:scale-105 hover:-translate-y-3 hover:rotate-1 transition-all duration-500">
-              <div className="text-6xl mb-6 transform group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 filter drop-shadow-2xl">🐛</div>
-              <h3 className="text-3xl font-bold mb-5 bg-linear-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent">
-                Smart Issue Tracking
-              </h3>
-              <p className="text-gray-300 leading-relaxed text-lg">
-                Report and monitor community issues with AI-powered categorization and priority assessment.
-              </p>
-              <div className="mt-8 flex items-center text-cyan-400 font-semibold group-hover:gap-3 gap-2 transition-all duration-300">
-                <span>Learn More</span>
-                <svg className="w-5 h-5 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-              </div>
-            </div>
+      <footer className="relative z-10 border-t border-[#172033]/10 bg-[#eeece6]">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10">
+          <div className="flex items-center gap-3">
+            <img
+              src="/project-pulse-logo.svg"
+              alt="Project Pulse community workspace"
+              className="h-8 w-auto"
+            />
           </div>
-          
-          <div className="relative group perspective-1000">
-            <div className="absolute inset-0 bg-linear-to-r from-purple-600 via-fuchsia-500 to-pink-500 rounded-3xl opacity-0 group-hover:opacity-100 blur-2xl transition-all duration-500 animate-pulse"></div>
-            <div className="relative bg-linear-to-br from-purple-500/10 via-fuchsia-500/10 to-pink-500/10 backdrop-blur-2xl rounded-3xl p-10 border border-purple-500/30 hover:border-fuchsia-400/50 shadow-2xl transform hover:scale-105 hover:-translate-y-3 hover:rotate-1 transition-all duration-500">
-              <div className="text-6xl mb-6 transform group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 filter drop-shadow-2xl">🤖</div>
-              <h3 className="text-3xl font-bold mb-5 bg-linear-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent">
-                AI Insights
-              </h3>
-              <p className="text-gray-300 leading-relaxed text-lg">
-                Get intelligent suggestions, duplicate detection, and automated categorization.
-              </p>
-              <div className="mt-8 flex items-center text-fuchsia-400 font-semibold group-hover:gap-3 gap-2 transition-all duration-300">
-                <span>Learn More</span>
-                <svg className="w-5 h-5 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-              </div>
-            </div>
-          </div>
-          
-          <div className="relative group perspective-1000">
-            <div className="absolute inset-0 bg-linear-to-r from-pink-600 via-rose-500 to-orange-500 rounded-3xl opacity-0 group-hover:opacity-100 blur-2xl transition-all duration-500 animate-pulse"></div>
-            <div className="relative bg-linear-to-br from-pink-500/10 via-rose-500/10 to-orange-500/10 backdrop-blur-2xl rounded-3xl p-10 border border-pink-500/30 hover:border-rose-400/50 shadow-2xl transform hover:scale-105 hover:-translate-y-3 hover:rotate-1 transition-all duration-500">
-              <div className="text-6xl mb-6 transform group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 filter drop-shadow-2xl">🏘️</div>
-              <h3 className="text-3xl font-bold mb-5 bg-linear-to-r from-pink-300 to-orange-300 bg-clip-text text-transparent">
-                Multi-Community
-              </h3>
-              <p className="text-gray-300 leading-relaxed text-lg">
-                Manage multiple communities with separate issue tracking and admin controls.
-              </p>
-              <div className="mt-8 flex items-center text-rose-400 font-semibold group-hover:gap-3 gap-2 transition-all duration-300">
-                <span>Learn More</span>
-                <svg className="w-5 h-5 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Stats Section */}
-        <div className="mt-32 relative group">
-          <div className="absolute inset-0 bg-linear-to-r from-blue-600/30 via-purple-600/30 to-pink-600/30 rounded-3xl blur-3xl group-hover:blur-2xl transition-all duration-500"></div>
-          <div className="relative bg-linear-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 backdrop-blur-2xl rounded-3xl border border-white/20 shadow-2xl p-16 hover:border-white/30 transition-all duration-500">
-            <div className="text-center mb-12">
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 hover:scale-105 inline-block transition-transform duration-300">Trusted by Communities Worldwide</h2>
-              <p className="text-transparent bg-clip-text bg-linear-to-r from-blue-300 via-purple-300 to-pink-300 text-xl">Real results from real communities</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-              <div className="text-center group/stat cursor-pointer">
-                <div className="relative inline-block mb-6">
-                  <div className="absolute inset-0 bg-linear-to-r from-blue-400 via-cyan-400 to-blue-300 blur-3xl opacity-50 group-hover/stat:opacity-100 transition-opacity animate-pulse"></div>
-                  <div className="relative text-7xl md:text-8xl font-black bg-linear-to-r from-blue-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent transform group-hover/stat:scale-125 transition-all duration-500">
-                    99%
-                  </div>
-                </div>
-                <div className="text-white text-xl font-bold mb-2">Issues Resolved</div>
-                <p className="text-gray-400">Successfully closed and tracked</p>
-              </div>
-              <div className="text-center group/stat cursor-pointer">
-                <div className="relative inline-block mb-6">
-                  <div className="absolute inset-0 bg-linear-to-r from-purple-400 via-fuchsia-400 to-pink-400 blur-3xl opacity-50 group-hover/stat:opacity-100 transition-opacity animate-pulse"></div>
-                  <div className="relative text-7xl md:text-8xl font-black bg-linear-to-r from-purple-400 via-fuchsia-300 to-pink-400 bg-clip-text text-transparent transform group-hover/stat:scale-125 transition-all duration-500">
-                    50%
-                  </div>
-                </div>
-                <div className="text-white text-xl font-bold mb-2">Faster Resolution</div>
-                <p className="text-gray-400">Average time saved per issue</p>
-              </div>
-              <div className="text-center group/stat cursor-pointer">
-                <div className="relative inline-block mb-6">
-                  <div className="absolute inset-0 bg-linear-to-r from-pink-400 via-rose-400 to-orange-400 blur-3xl opacity-50 group-hover/stat:opacity-100 transition-opacity animate-pulse"></div>
-                  <div className="relative text-7xl md:text-8xl font-black bg-linear-to-r from-pink-400 via-rose-300 to-orange-400 bg-clip-text text-transparent transform group-hover/stat:scale-125 transition-all duration-500">
-                    24/7
-                  </div>
-                </div>
-                <div className="text-white text-xl font-bold mb-2">AI Monitoring</div>
-                <p className="text-gray-400">Continuous intelligent tracking</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <footer className="relative z-10 border-t border-white/10 bg-slate-950/50 backdrop-blur-2xl mt-32">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="text-center">
-            <div className="flex items-center justify-center mb-6 group cursor-pointer">
-              <div className="relative">
-                <div className="absolute inset-0 bg-linear-to-r from-blue-500 via-purple-500 to-pink-500 rounded-2xl blur-lg opacity-75 group-hover:opacity-100 transition-opacity animate-pulse"></div>
-                <div className="relative h-14 w-14 bg-linear-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-2xl transform group-hover:scale-110 group-hover:rotate-12 transition-all duration-500">
-                  <span className="text-white font-bold text-2xl">PP</span>
-                </div>
-              </div>
-            </div>
-            <p className="text-white font-semibold text-lg mb-2">
-              &copy; 2024 Project Pulse. All rights reserved.
-            </p>
-            <p className="text-transparent bg-clip-text bg-linear-to-r from-gray-400 via-purple-400 to-gray-400">
-              Building better communities with AI
-            </p>
-          </div>
+          <p className="text-xs text-[#172033]/45">
+            Building better communities with thoughtful technology.
+          </p>
+          <p className="text-xs text-[#172033]/40">© 2024 Project Pulse</p>
         </div>
       </footer>
     </div>
-  )
-}
+  );
+};
 
-export default Home
+export default Home;

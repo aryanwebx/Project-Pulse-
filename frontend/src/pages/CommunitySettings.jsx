@@ -75,11 +75,11 @@ const CommunitySettings = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6 pb-8">
       <div className="mb-6">
         <Link
           to="/app/admin"
-          className="inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900"
+          className="inline-flex items-center space-x-2 text-sm font-semibold text-[#667085] hover:text-[#182230]"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -88,10 +88,9 @@ const CommunitySettings = () => {
         </Link>
       </div>
 
-      <h1 className="text-3xl font-bold text-gray-900">Community Settings</h1>
-      <p className="text-gray-600">
+      <div><p className="text-xs font-bold uppercase tracking-[.13em] text-primary-600">Administration</p><h1 className="mt-2 text-3xl font-bold tracking-[-.035em] text-[#182230]">Community settings</h1><p className="mt-2 text-sm text-[#667085]">
         Manage settings for <span className="font-semibold">{currentCommunity.community.name}</span>.
-      </p>
+      </p></div>
 
       <div className="card">
         {error && <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg">{error}</div>}

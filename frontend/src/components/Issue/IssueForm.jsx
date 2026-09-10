@@ -1,130 +1,163 @@
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from "react";
+import { issueService } from "../../services/issueService";
 
 const IssueForm = ({ onSubmit, onCancel, loading, community }) => {
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    category: '',
-    urgency: 'medium',
-    location: '',
-    images: []
-  })
-  const [errors, setErrors] = useState({})
-  const [imagePreviews, setImagePreviews] = useState([])
-  const fileInputRef = useRef(null)
+    title: "",
+    description: "",
+    category: "",
+    urgency: "medium",
+    location: "",
+    images: [],
+  });
+  const [errors, setErrors] = useState({});
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [aiSuggestion, setAiSuggestion] = useState(null);
+  const [loadingAiSuggestion, setLoadingAiSuggestion] = useState(false);
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    const title = formData.title.trim();
+    const description = formData.description.trim();
+
+    if (title.length < 3 || description.length < 20) {
+      setAiSuggestion(null);
+      setLoadingAiSuggestion(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setLoadingAiSuggestion(true);
+      try {
+        const suggestion = await issueService.suggestIssue(title, description);
+        if (!cancelled) setAiSuggestion(suggestion);
+      } catch (error) {
+        if (!cancelled) setAiSuggestion(null);
+        console.error("Failed to get AI issue suggestion:", error);
+      } finally {
+        if (!cancelled) setLoadingAiSuggestion(false);
+      }
+    }, 700);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [formData.title, formData.description]);
 
   // Get categories from community settings or use defaults
   const categories = community?.community?.settings?.categories;
 
   const urgencyOptions = [
-    { value: 'low', label: 'Low', description: 'Minor issue, no immediate action needed' },
-    { value: 'medium', label: 'Medium', description: 'Should be addressed soon' },
-    { value: 'high', label: 'High', description: 'Needs immediate attention' }
-  ]
+    { value: "low", label: "Low", description: "Minor issue, no immediate action needed" },
+    { value: "medium", label: "Medium", description: "Should be addressed soon" },
+    { value: "high", label: "High", description: "Needs immediate attention" },
+  ];
 
   const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
+    const { name, value } = e.target;
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
-    }))
-    
+      [name]: value,
+    }));
+
     // Clear error when user starts typing
     if (errors[name]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        [name]: ''
-      }))
+        [name]: "",
+      }));
     }
-  }
+  };
 
   const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files)
-    
+    const files = Array.from(e.target.files);
+
     // Validate file types and sizes
-    const validFiles = files.filter(file => {
-      const isValidType = file.type.startsWith('image/')
-      const isValidSize = file.size <= 5 * 1024 * 1024 // 5MB limit
-      
+    const validFiles = files.filter((file) => {
+      const isValidType = file.type.startsWith("image/");
+      const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB limit
+
       if (!isValidType) {
-        alert('Please upload only image files')
-        return false
+        alert("Please upload only image files");
+        return false;
       }
-      
+
       if (!isValidSize) {
-        alert('Image size should be less than 5MB')
-        return false
+        alert("Image size should be less than 5MB");
+        return false;
       }
-      
-      return true
-    })
+
+      return true;
+    });
 
     // Create previews for valid files
-    const newPreviews = validFiles.map(file => ({
+    const newPreviews = validFiles.map((file) => ({
       file,
-      preview: URL.createObjectURL(file)
-    }))
+      preview: URL.createObjectURL(file),
+    }));
 
-    setImagePreviews(prev => [...prev, ...newPreviews])
-    setFormData(prev => ({
+    setImagePreviews((prev) => [...prev, ...newPreviews]);
+    setFormData((prev) => ({
       ...prev,
-      images: [...prev.images, ...validFiles]
-    }))
+      images: [...prev.images, ...validFiles],
+    }));
 
     // Reset file input
     if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+      fileInputRef.current.value = "";
     }
-  }
+  };
 
   const removeImage = (index) => {
-    const updatedPreviews = imagePreviews.filter((_, i) => i !== index)
-    const updatedImages = formData.images.filter((_, i) => i !== index)
-    
+    const updatedPreviews = imagePreviews.filter((_, i) => i !== index);
+    const updatedImages = formData.images.filter((_, i) => i !== index);
+
     // Revoke object URL to prevent memory leaks
-    URL.revokeObjectURL(imagePreviews[index].preview)
-    
-    setImagePreviews(updatedPreviews)
-    setFormData(prev => ({
+    URL.revokeObjectURL(imagePreviews[index].preview);
+
+    setImagePreviews(updatedPreviews);
+    setFormData((prev) => ({
       ...prev,
-      images: updatedImages
-    }))
-  }
+      images: updatedImages,
+    }));
+  };
 
   const validateForm = () => {
-    const newErrors = {}
+    const newErrors = {};
 
     if (!formData.title.trim()) {
-      newErrors.title = 'Title is required'
+      newErrors.title = "Title is required";
     } else if (formData.title.trim().length < 5) {
-      newErrors.title = 'Title must be at least 5 characters'
+      newErrors.title = "Title must be at least 5 characters";
     }
 
     if (!formData.description.trim()) {
-      newErrors.description = 'Description is required'
+      newErrors.description = "Description is required";
     } else if (formData.description.trim().length < 10) {
-      newErrors.description = 'Description must be at least 10 characters'
+      newErrors.description = "Description must be at least 10 characters";
     }
 
     if (!formData.category) {
-      newErrors.category = 'Category is required'
+      newErrors.category = "Please select a category";
     }
 
     if (!formData.location.trim()) {
-      newErrors.location = 'Location is required'
+      newErrors.location = "Location is required";
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = (e) => {
-    e.preventDefault()
-    
+    e.preventDefault();
+
     if (validateForm()) {
-      onSubmit(formData)
+      onSubmit(formData);
     }
-  }
+  };
 
   return (
     <div className="card">
@@ -142,13 +175,11 @@ const IssueForm = ({ onSubmit, onCancel, loading, community }) => {
             onChange={handleChange}
             placeholder="Briefly describe the issue..."
             className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors ${
-              errors.title ? 'border-red-300' : 'border-gray-300'
+              errors.title ? "border-red-300" : "border-gray-300"
             }`}
             disabled={loading}
           />
-          {errors.title && (
-            <p className="mt-1 text-sm text-red-600">{errors.title}</p>
-          )}
+          {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title}</p>}
         </div>
 
         {/* Description Field */}
@@ -164,16 +195,12 @@ const IssueForm = ({ onSubmit, onCancel, loading, community }) => {
             onChange={handleChange}
             placeholder="Provide detailed information about the issue..."
             className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors resize-none ${
-              errors.description ? 'border-red-300' : 'border-gray-300'
+              errors.description ? "border-red-300" : "border-gray-300"
             }`}
             disabled={loading}
           />
-          {errors.description && (
-            <p className="mt-1 text-sm text-red-600">{errors.description}</p>
-          )}
-          <p className="mt-1 text-sm text-gray-500">
-            {formData.description.length}/500 characters
-          </p>
+          {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
+          <p className="mt-1 text-sm text-gray-500">{formData.description.length}/500 characters</p>
         </div>
 
         {/* Category and Urgency Row */}
@@ -189,20 +216,17 @@ const IssueForm = ({ onSubmit, onCancel, loading, community }) => {
               value={formData.category}
               onChange={handleChange}
               className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors ${
-                errors.category ? 'border-red-300' : 'border-gray-300'
+                errors.category ? "border-red-300" : "border-gray-300"
               }`}
-              disabled={loading}
-            >
+              disabled={loading}>
               <option value="">Select a category</option>
-              {categories.map(category => (
+              {categories.map((category) => (
                 <option key={category} value={category}>
                   {category}
                 </option>
               ))}
             </select>
-            {errors.category && (
-              <p className="mt-1 text-sm text-red-600">{errors.category}</p>
-            )}
+            {errors.category && <p className="mt-1 text-sm text-red-600">{errors.category}</p>}
           </div>
 
           {/* Urgency Field */}
@@ -216,17 +240,14 @@ const IssueForm = ({ onSubmit, onCancel, loading, community }) => {
               value={formData.urgency}
               onChange={handleChange}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-              disabled={loading}
-            >
-              {urgencyOptions.map(option => (
+              disabled={loading}>
+              {urgencyOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label} - {option.description}
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-sm text-gray-500">
-              How urgent is this issue?
-            </p>
+            <p className="mt-1 text-sm text-gray-500">How urgent is this issue?</p>
           </div>
         </div>
 
@@ -243,21 +264,17 @@ const IssueForm = ({ onSubmit, onCancel, loading, community }) => {
             onChange={handleChange}
             placeholder="Where is this issue located? (e.g., Near Building A, Parking Lot, etc.)"
             className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors ${
-              errors.location ? 'border-red-300' : 'border-gray-300'
+              errors.location ? "border-red-300" : "border-gray-300"
             }`}
             disabled={loading}
           />
-          {errors.location && (
-            <p className="mt-1 text-sm text-red-600">{errors.location}</p>
-          )}
+          {errors.location && <p className="mt-1 text-sm text-red-600">{errors.location}</p>}
         </div>
 
         {/* Image Upload */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Photos (Optional)
-          </label>
-          
+          <label className="block text-sm font-medium text-gray-700 mb-2">Photos (Optional)</label>
+
           {/* Image Previews */}
           {imagePreviews.length > 0 && (
             <div className="mb-4">
@@ -272,16 +289,13 @@ const IssueForm = ({ onSubmit, onCancel, loading, community }) => {
                     <button
                       type="button"
                       onClick={() => removeImage(index)}
-                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                       ×
                     </button>
                   </div>
                 ))}
               </div>
-              <p className="text-sm text-gray-500 mt-2">
-                {imagePreviews.length} photo(s) selected
-              </p>
+              <p className="text-sm text-gray-500 mt-2">{imagePreviews.length} photo(s) selected</p>
             </div>
           )}
 
@@ -297,23 +311,29 @@ const IssueForm = ({ onSubmit, onCancel, loading, community }) => {
               disabled={loading}
             />
             <div className="space-y-2">
-              <svg className="w-12 h-12 text-gray-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <svg
+                className="w-12 h-12 text-gray-400 mx-auto"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
               </svg>
               <div>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={loading}
-                  className="text-primary-600 hover:text-primary-700 font-medium text-sm"
-                >
+                  className="text-primary-600 hover:text-primary-700 font-medium text-sm">
                   Click to upload
                 </button>
                 <p className="text-gray-500 text-sm">or drag and drop</p>
               </div>
-              <p className="text-gray-400 text-xs">
-                PNG, JPG, GIF up to 5MB each
-              </p>
+              <p className="text-gray-400 text-xs">PNG, JPG, GIF up to 5MB each</p>
             </div>
           </div>
         </div>
@@ -327,26 +347,22 @@ const IssueForm = ({ onSubmit, onCancel, loading, community }) => {
             <div>
               <h4 className="font-medium text-blue-900">AI Suggestions</h4>
               <p className="text-blue-700 text-sm mt-1">
-                Based on your description, this issue appears to be related to <strong>{formData.category || 'general maintenance'}</strong>. 
-                {formData.urgency === 'high' && ' This has been flagged as high priority due to safety concerns.'}
+                {loadingAiSuggestion && "AI is analyzing your draft..."}
+                {!loadingAiSuggestion && aiSuggestion && (
+                  <>
+                    AI suggests <strong>{aiSuggestion.predictedCategory}</strong>
+                    {aiSuggestion.sentiment && ` with ${aiSuggestion.sentiment} sentiment`}. Your
+                    selected category remains the final decision.
+                  </>
+                )}
+                {!loadingAiSuggestion &&
+                  !aiSuggestion &&
+                  "AI will suggest a category while you write. Your selected category remains the final decision."}
               </p>
-              {formData.description.length > 20 && (
-                <div className="mt-2">
-                  <p className="text-blue-700 text-sm font-medium">Suggested tags:</p>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                      {formData.category?.toLowerCase() || 'maintenance'}
-                    </span>
-                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                      {formData.urgency}-priority
-                    </span>
-                    {formData.location && (
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                        {formData.location.toLowerCase()}
-                      </span>
-                    )}
-                  </div>
-                </div>
+              {!loadingAiSuggestion && aiSuggestion?.suggestedTags?.length > 0 && (
+                <p className="mt-2 text-blue-700 text-sm">
+                  Suggested tags: {aiSuggestion.suggestedTags.join(", ")}
+                </p>
               )}
             </div>
           </div>
@@ -354,24 +370,20 @@ const IssueForm = ({ onSubmit, onCancel, loading, community }) => {
 
         {/* Form Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-6 border-t border-gray-200">
-          <div className="text-sm text-gray-500">
-            Fields marked with * are required
-          </div>
-          
+          <div className="text-sm text-gray-500">Fields marked with * are required</div>
+
           <div className="flex space-x-3">
             <button
               type="button"
               onClick={onCancel}
               disabled={loading}
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-            >
+              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary px-6 py-3 flex items-center space-x-2 disabled:opacity-50"
-            >
+              className="btn-primary px-6 py-3 flex items-center space-x-2 disabled:opacity-50">
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -380,7 +392,12 @@ const IssueForm = ({ onSubmit, onCancel, loading, community }) => {
               ) : (
                 <>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                    />
                   </svg>
                   <span>Report Issue</span>
                 </>
@@ -390,7 +407,7 @@ const IssueForm = ({ onSubmit, onCancel, loading, community }) => {
         </div>
       </form>
     </div>
-  )
-}
+  );
+};
 
-export default IssueForm
+export default IssueForm;

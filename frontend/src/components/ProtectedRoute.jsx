@@ -1,20 +1,13 @@
-import { Navigate, useLocation } from 'react-router'
-import { useAuth } from '../contexts/AuthContext'
-import { useCommunity } from '../contexts/CommunityContext'
+import { Navigate, useLocation } from "react-router";
+import { useAuth } from "../contexts/AuthContext";
+import { useCommunity } from "../contexts/CommunityContext";
 
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading: authLoading } = useAuth()
-  const { loading: communityLoading } = useCommunity()
-  const location = useLocation()
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { loading: communityLoading } = useCommunity();
+  const location = useLocation();
 
-  const loading = authLoading || communityLoading
-
-  console.log('ProtectedRoute Check:', { 
-    isAuthenticated, 
-    authLoading, 
-    communityLoading,
-    currentPath: location.pathname 
-  })
+  const loading = authLoading || communityLoading;
 
   if (loading) {
     return (
@@ -24,16 +17,14 @@ const ProtectedRoute = ({ children }) => {
           <p className="mt-4 text-gray-600">Loading your community...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!isAuthenticated) {
-    console.log('Not authenticated, redirecting to login')
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  console.log('User authenticated, rendering protected content')
-  return children
-}
+  return children;
+};
 
-export default ProtectedRoute
+export default ProtectedRoute;
