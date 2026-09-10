@@ -1,12 +1,13 @@
 # Project Pulse 🚀
 
-![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg) ![React](https://img.shields.io/badge/React-19.2.0-blue?logo=react) ![Node.js](https://img.shields.io/badge/Node.js-16%2B-green?logo=nodedotjs) ![MongoDB](https://img.shields.io/badge/MongoDB-blue?logo=mongodb) ![Socket.io](https://img.shields.io/badge/Socket.io-4.8-blue?logo=socketdotio)
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg) ![React](https://img.shields.io/badge/React-19-blue?logo=react) ![Node.js](https://img.shields.io/badge/Node.js-16%2B-green?logo=nodedotjs) ![MongoDB](https://img.shields.io/badge/MongoDB-blue?logo=mongodb) ![Socket.io](https://img.shields.io/badge/Socket.io-4.8-blue?logo=socketdotio)
 
 **Project Pulse** is a full-stack, multi-tenant community issue tracking platform designed to help residents and administrators manage community-related problems efficiently. It features a modern, real-time architecture with AI-powered insights to categorize, summarize, and assist in responding to issues.
 
 ### ✨ Live Demo
 
 * **Frontend (Vercel):** `https://project-pulse-gules.vercel.app`
+* **Repository:** `https://github.com/aryanwebx/Project-Pulse-`
 ---
 
 ## Core Features
@@ -31,8 +32,9 @@
 * **Engagement:** Users can upvote issues and participate in nested comment threads.
 
 ### 🤖 AI Integration (via Google Gemini)
-* **AI Analysis:** New issues are automatically analyzed to predict category, determine sentiment, and generate a concise summary.
+* **AI Analysis:** Issue drafts receive category, sentiment, summary, and tag suggestions while the user writes. AI never overrides the user's final category.
 * **AI Admin Assist:** Admins can generate an AI-powered reply to comments based on the issue's current status and context.
+* **Admin Category Editing:** Community and super admins can change an issue category through an explicit Edit and Save workflow.
 
 ### ⚡ Real-Time Features (Socket.io)
 * **Live Notifications:** Users receive real-time notifications for status updates and new comments on their issues.
@@ -80,8 +82,8 @@ You must have the following software installed:
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/your-username/project-pulse.git](https://github.com/your-username/project-pulse.git)
-    cd project-pulse
+    git clone https://github.com/aryanwebx/Project-Pulse-.git
+    cd Project-Pulse-
     ```
 
 2.  **Navigate to the backend:**
@@ -97,22 +99,22 @@ You must have the following software installed:
 4.  **Create `.env` file:**
     Create a file named `.env` in the `backend` directory and add the following variables:
     ```env
-    # From backend/.env
+    # Copy backend/.env.example and replace the placeholder values.
     MONGODB_URI=your_mongodb_connection_string
     JWT_SECRET=your_super_secret_jwt_key
     CLOUDINARY_URL=your_cloudinary_url
     CLIENT_URL=http://localhost:5173
     NODE_ENV=development
-    PORT=5000
+    PORT=8000
     GEMINI_API_KEY=your_google_gemini_api_key
-    REDIS_URL=redis://127.0.0.1:6379
+    REDIS_URL=redis://default:password@host:port
     ```
 
 5.  **Run the backend server:**
     ```bash
     npm start
     ```
-    The backend API will be running at `http://localhost:5000`.
+    The backend API will be running at `http://localhost:8000`.
 
 ### 2. Frontend Setup
 
@@ -130,8 +132,8 @@ You must have the following software installed:
 3.  **Create `.env` file:**
     Create a file named `.env` in the `frontend` directory and add the API URL:
     ```env
-    # From frontend/.env
-    VITE_API_URL=http://localhost:5000
+    # Copy frontend/.env.example and replace the backend URL when deployed.
+    VITE_API_URL=http://localhost:8000
     ```
 
 4.  **Run the frontend app:**
@@ -139,6 +141,21 @@ You must have the following software installed:
     npm run dev
     ```
     The frontend will be available at `http://localhost:5173`.
+
+### Backend checks
+
+Run the backend syntax smoke test from the `backend` directory:
+
+```bash
+npm test
+```
+
+Run frontend checks from the `frontend` directory:
+
+```bash
+npm run lint
+npm run build
+```
 
 ---
 
@@ -152,18 +169,18 @@ This project requires the following environment variables to be set.
 | :--- | :--- |
 | `MONGODB_URI` | **Required.** Connection string for your MongoDB database. |
 | `JWT_SECRET` | **Required.** A long, random string used to sign auth tokens. |
-| `REDIS_URL` | **Required.** Connection URL for your Redis instance (e.g., `redis://127.0.0.1:6379`). |
+| `REDIS_URL` | **Required for persistent token blacklist.** Redis connection URL, for example `redis://default:password@host:port` or a Redis Cloud URL. |
 | `GEMINI_API_KEY`| **Required.** Your API key from Google AI Studio. |
 | `CLOUDINARY_URL` | **Required.** Your Cloudinary API connection string. |
 | `CLIENT_URL` | **Required.** The URL of your frontend (e.g., `http://localhost:5173`). Used for CORS. |
-| `PORT` | Optional. The port for the backend server (defaults to 5000). |
+| `PORT` | Optional. The port for the backend server (defaults to 8000). |
 | `NODE_ENV` | Optional. Set to `production` in your deployed environment. |
 
 ### Frontend (`/frontend/.env`)
 
 | Variable | Description |
 | :--- | :--- |
-| `VITE_API_URL` | **Required.** The full URL of your backend API (e.g., `http://localhost:5000`). |
+| `VITE_API_URL` | **Required.** The full URL of your backend API (e.g., `http://localhost:8000`). |
 
 ---
 
@@ -184,7 +201,9 @@ A brief summary of the main routes is below:
 | `GET` | `/api/communities/members`| (Admin) Get a list of all members in the community. |
 | `GET` | `/api/issues` | Get a paginated list of all issues (with filters). |
 | `POST` | `/api/issues` | Create a new issue (handles image uploads). |
+| `POST` | `/api/issues/ai-suggest` | Get advisory AI suggestions for an issue draft. |
 | `GET` | `/api/issues/:id` | Get full details for a single issue, including comments. |
+| `PUT` | `/api/issues/:id/category` | (Admin) Change an issue category. |
 | `PUT` | `/api/issues/:id/status` | (Admin) Update the status of an issue. |
 | `POST` | `/api/issues/:id/upvote` | Upvote or remove an upvote from an issue. |
 | `POST` | `/api/issues/:id/comments` | Add a new comment to an issue. |
@@ -203,7 +222,9 @@ This application is deployed with a decoupled, serverless-friendly architecture:
 * **Frontend:** The React/Vite app is deployed as a **Static Site** on **Vercel**.
 * **Backend:** The Node.js/Express API is deployed as a **Web Service** on **Render**.
 * **Database:** A managed **MongoDB Atlas** cluster is used for the database.
-* **Cache:** A managed **Redis** instance from Render is used for token blacklisting.
+* **Cache:** A managed **Redis Cloud** instance is used for token blacklisting.
+
+For deployment, configure the backend environment variables from `backend/.env.example` and set `CLIENT_URL` to the deployed frontend URL. Configure the frontend `VITE_API_URL` to the deployed backend URL. Never commit `.env` files or secret values.
 
 ---
 
