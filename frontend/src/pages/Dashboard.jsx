@@ -33,6 +33,10 @@ const Dashboard = () => {
         return; // Exit if no community and not super admin
       }
       setLoading(true);
+      setStats(null);
+      setCategoryStats([]);
+      setSentimentStats([]);
+      setRecentIssues([]);
       try {
         // Fetch stats and issues in parallel
         const [statsData, issuesData] = await Promise.all([
@@ -57,7 +61,7 @@ const Dashboard = () => {
       // No community is assigned, so stop loading
       setLoading(false);
     }
-  }, [currentCommunity, communityLoading]);
+  }, [currentCommunity, communityLoading, user?.role]);
 
   if (user?.role === "super_admin") {
     // Option 1: Redirect immediately to their dashboard
@@ -91,7 +95,7 @@ const Dashboard = () => {
     }
   };
 
-  if (communityLoading) {
+  if (communityLoading || loading) {
     return (
       <div className="space-y-6">
         <div className="card">
